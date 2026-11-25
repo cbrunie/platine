@@ -194,3 +194,21 @@ Après l'accord d'Apple (quelques jours à quelques semaines) :
 1. Sur developer.apple.com → Identifiers → `fr.cbrunie.platter`, l'entitlement CarPlay Audio apparaît dans « Additional Capabilities ».
 2. Dans le projet, `CODE_SIGN_ENTITLEMENTS` n'est appliqué qu'au simulateur (`[sdk=iphonesimulator*]`) : retirer ce filtre pour que `iOS/Platine.entitlements` soit signé aussi pour l'appareil.
 3. Envoyer un nouveau build. Tant que ce n'est pas fait, la version App Store fonctionne sans CarPlay.
+
+---
+
+# Apple TV Privacy Policy
+
+Champ texte de la page tvOS (l'Apple TV ne peut pas ouvrir de lien, Apple demande le texte lui-même) :
+
+```
+Platine does not collect any personal data.
+
+Platine has no ads, analytics or third-party SDKs. The app only communicates with the DroppedNeedle server whose address you enter. That server belongs to you or to whoever hosts it; the developer has no access to it.
+
+Your session token is stored in the Keychain of your Apple TV. Your preferences stay on the device and are erased when you sign out.
+
+No data is sold, shared or sent to the developer.
+
+Contact: github.com/cbrunie/platine/issues
+```
