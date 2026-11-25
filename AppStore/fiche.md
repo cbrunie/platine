@@ -1,6 +1,6 @@
 # Platine — fiche App Store Connect
 
-Bundle ID : `fr.cbrunie.platine` (iOS, iPadOS, Mac Catalyst et tvOS sur la même fiche, achat universel).
+Bundle ID : `fr.cbrunie.platter` (iOS, iPadOS, Mac Catalyst et tvOS sur la même fiche, achat universel).
 Langue principale : Français.
 
 ## English (UK) — langue principale de la fiche
@@ -178,7 +178,7 @@ Formulaire : https://developer.apple.com/contact/carplay/ (connecté avec ton co
 
 - **App type / CarPlay category** : Audio
 - **App name** : Platine
-- **Bundle ID** : fr.cbrunie.platine
+- **Bundle ID** : fr.cbrunie.platter
 - **App Store URL** : (vide si pas encore publiée)
 - **Description** (anglais) :
 
@@ -191,6 +191,6 @@ The app already uses background audio, MPNowPlayingInfoCenter and MPRemoteComman
 ```
 
 Après l'accord d'Apple (quelques jours à quelques semaines) :
-1. Sur developer.apple.com → Identifiers → `fr.cbrunie.platine`, l'entitlement CarPlay Audio apparaît dans « Additional Capabilities ».
+1. Sur developer.apple.com → Identifiers → `fr.cbrunie.platter`, l'entitlement CarPlay Audio apparaît dans « Additional Capabilities ».
 2. Dans le projet, `CODE_SIGN_ENTITLEMENTS` n'est appliqué qu'au simulateur (`[sdk=iphonesimulator*]`) : retirer ce filtre pour que `iOS/Platine.entitlements` soit signé aussi pour l'appareil.
 3. Envoyer un nouveau build. Tant que ce n'est pas fait, la version App Store fonctionne sans CarPlay.
