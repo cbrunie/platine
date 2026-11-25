@@ -391,7 +391,7 @@ struct AlbumView: View {
                 }
                 Text("Ses plages arriveront avec l'album").font(.caption).foregroundStyle(.white.opacity(0.6))
             }
-            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
         }
         .padding(12)
         .background(.white.opacity(0.08), in: .rect(cornerRadius: 12))

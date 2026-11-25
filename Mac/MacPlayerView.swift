@@ -132,7 +132,7 @@ struct MacPlayerView: View {
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    Text(track?.title ?? "Platine à l'arrêt").font(.display(22, relativeTo: .title2)).lineLimit(1)
+                    Text(track?.title ?? "Platine à l'arrêt").font(.display(22, relativeTo: .title2)).oneLine()
                     Spacer(minLength: 0)
                     Menu {
                         if let route = track?.albumRoute {
@@ -162,7 +162,7 @@ struct MacPlayerView: View {
                     }
                 }
                 .foregroundStyle(.white.opacity(0.6))
-                .lineLimit(1)
+                .oneLine()
             }
             if let error = player.error {
                 Label("Le disque saute : \(error)", systemImage: "exclamationmark.triangle.fill")

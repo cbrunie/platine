@@ -55,7 +55,7 @@ struct MacRoot: View {
                     Section("Playlists") {
                         ForEach(playlists) { playlist in
                             Label {
-                                Text(playlist.name).lineLimit(1).foregroundStyle(Color.primary)
+                                Text(playlist.name).oneLine().foregroundStyle(Color.primary)
                             } icon: {
                                 Cover(path: playlist.covers.first ?? nil, size: 18, radius: 3)
                             }
@@ -136,7 +136,7 @@ struct MacRoot: View {
                     } else {
                         Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(Color.sage)
                     }
-                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").lineLimit(1)
+                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").oneLine()
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 10)
@@ -231,9 +231,9 @@ private struct MacPlayerBar: View {
                 HStack(spacing: 10) {
                     Cover(path: track?.cover, size: 38, radius: 5)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(track?.title ?? "Platine à l'arrêt").font(.callout.weight(.semibold)).lineLimit(1)
+                        Text(track?.title ?? "Platine à l'arrêt").font(.callout.weight(.semibold)).oneLine()
                         Text(track.map { "\($0.artist) — \($0.album)" } ?? " ")
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.caption).foregroundStyle(.secondary).oneLine()
                         // La progression, fine comme celle de Musique.
                         GeometryReader { geometry in
                             Capsule().fill(.white.opacity(0.15))

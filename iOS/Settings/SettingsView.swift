@@ -39,7 +39,7 @@ struct SettingsView: View {
                     .foregroundStyle(.primary)
                     if let email = profile?.email {
                         row("E-mail", symbol: "envelope.fill", color: .blue) {
-                            Text(email).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                            Text(email).foregroundStyle(.secondary).oneLine().truncationMode(.middle)
                         }
                     }
                     NavigationLink { AccountSecurityView() } label: {

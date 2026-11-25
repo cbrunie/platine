@@ -15,13 +15,15 @@ struct Turntable: View {
     /// s'arrête là où il est, et repart de là.
     @State private var spun: TimeInterval = 0
     @State private var since: Date?
+    /// « Réduire les animations » : le disque reste immobile, seul le bras dit si ça joue.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
             ZStack {
-                TimelineView(.animation(paused: !isPlaying)) { context in
-                    let turned = spun + (since.map { context.date.timeIntervalSince($0) } ?? 0)
+                TimelineView(.animation(paused: !isPlaying || reduceMotion)) { context in
+                    let turned = reduceMotion ? spun : spun + (since.map { context.date.timeIntervalSince($0) } ?? 0)
                     record(side)
                         .rotationEffect(.degrees(turned / Self.secondsPerTurn * 360))
                 }

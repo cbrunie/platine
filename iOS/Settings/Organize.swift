@@ -649,7 +649,7 @@ struct PreviewView: View {
         return VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(item["capability"]?["catalog_track_title"]?.string ?? item["source_relative_path"]?.string?.split(separator: "/").last.map(String.init) ?? "")
-                    .lineLimit(1)
+                    .oneLine()
                 Spacer()
                 Pill(text: ["eligible": "Prêt", "warning": "Averti", "blocked": "Bloqué", "stale": "Périmé"][eligibility] ?? eligibility,
                      color: ["eligible": .sage, "warning": .yellow, "blocked": .red][eligibility] ?? .gray)

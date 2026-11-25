@@ -24,9 +24,9 @@ struct TrackRow<Accessory: View>: View {
                     Cover(path: track.cover, size: 44)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title).lineLimit(1).foregroundStyle(isCurrent ? Color.sage : .primary)
+                    Text(track.title).oneLine().foregroundStyle(isCurrent ? Color.sage : .primary)
                     if leading == nil {
-                        Text(track.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        Text(track.artist).font(.subheadline).foregroundStyle(.secondary).oneLine()
                     }
                 }
                 Spacer(minLength: 0)
@@ -97,8 +97,8 @@ struct TrackCard: View {
                             .padding(6)
                     }
                 }
-            Text(track.title).font(.subheadline.weight(.medium)).lineLimit(1)
-            Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(track.title).font(.subheadline.weight(.medium)).oneLine()
+            Text(track.artist).font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)
@@ -136,8 +136,8 @@ struct AlbumCard: View {
                     let tracks = await album.tracks(using: client)
                     if !tracks.isEmpty { player.play(tracks, source: album.source, using: client) }
                 }
-            Text(album.name).font(.subheadline.weight(.medium)).lineLimit(1)
-            Text(album.artistName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(album.name).font(.subheadline.weight(.medium)).oneLine()
+            Text(album.artistName).font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)
@@ -215,10 +215,10 @@ struct AlbumRow<Accessory: View>: View {
         HStack(spacing: 12) {
             Cover(path: cover)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline).lineLimit(1)
-                Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(title).font(.headline).oneLine()
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary).oneLine()
                 if let detail {
-                    Text(detail).font(.caption).foregroundStyle(.tertiary).lineLimit(2)
+                    Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
             Spacer(minLength: 0)

@@ -169,7 +169,7 @@ struct SkeletonRows: View {
                     RoundedRectangle(cornerRadius: round ? side / 2 : 6).fill(color)
                         .frame(width: side, height: side).pulsing()
                 } else {
-                    Text(String(index + 1)).font(.subheadline.monospacedDigit()).foregroundStyle(.tertiary)
+                    Text(String(index + 1)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(minWidth: 24)
                 }
                 VStack(alignment: .leading, spacing: 6) {
@@ -247,7 +247,7 @@ struct SkeletonTrackList: View {
             Text(title).font(.display(20, relativeTo: .title3))
             ForEach(0 ..< 5, id: \.self) { index in
                 HStack(spacing: 12) {
-                    Text(String(index + 1)).font(.subheadline.monospacedDigit()).foregroundStyle(.tertiary).frame(width: 20)
+                    Text(String(index + 1)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 20)
                     VStack(alignment: .leading, spacing: 6) {
                         SkeletonLine(width: [190, 150, 170, 130, 160][index])
                         SkeletonLine(width: 100, height: 10)
@@ -343,7 +343,7 @@ struct ArtistBubble: View {
     var body: some View {
         VStack(spacing: 8) {
             Cover(path: image, size: size, radius: size / 2)
-            Text(name).font(.subheadline.weight(.medium)).lineLimit(1)
+            Text(name).font(.subheadline.weight(.medium)).oneLine()
         }
         .frame(width: size)
         .foregroundStyle(.primary)
@@ -381,12 +381,12 @@ struct ConcertRow: View {
             DateTile(date: date)
             VStack(alignment: .leading, spacing: 3) {
                 Text(showsArtist ? concert.artistName : concert.city ?? concert.eventName)
-                    .font(.headline).lineLimit(1)
+                    .font(.headline).oneLine()
                     .strikethrough(cancelled)
                 Text([showsArtist ? concert.city : nil, concert.venueName,
                       date?.formatted(.dateTime.weekday(.abbreviated)), time]
                     .compactMap(\.self).joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.subheadline).foregroundStyle(.secondary).oneLine()
             }
             Spacer(minLength: 0)
             if cancelled {

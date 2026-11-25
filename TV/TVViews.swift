@@ -37,8 +37,8 @@ struct TVCard<Label: View>: View {
             button(AnyView(Cover(path: cover, size: size, radius: 12)))
                 .buttonStyle(.card)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.callout.weight(.semibold)).lineLimit(1)
-                if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                Text(title).font(.callout.weight(.semibold)).oneLine()
+                if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary).oneLine() }
             }
         }
         .frame(width: size)
@@ -84,8 +84,8 @@ struct TVTrackList: View {
                         Cover(path: track.cover, size: 64)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(track.title).lineLimit(1)
-                        if !numbered { Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                        Text(track.title).oneLine()
+                        if !numbered { Text(track.artist).font(.caption).foregroundStyle(.secondary).oneLine() }
                     }
                     Spacer(minLength: 0)
                     if player.current == track {
@@ -342,7 +342,7 @@ struct TVNowPlaying: View {
                     .lineLimit(2)
                 if let track {
                     Text(track.artist).font(.title2).foregroundStyle(.secondary)
-                    Text(track.album).font(.title3).foregroundStyle(.tertiary)
+                    Text(track.album).font(.title3).foregroundStyle(.secondary)
                     VStack(spacing: 8) {
                         ProgressView(value: min(player.elapsed, max(player.duration, 1)), total: max(player.duration, 1))
                             .tint(Color.sage)
@@ -367,7 +367,7 @@ struct TVNowPlaying: View {
                         Text("À suivre : \(next.title) · \(next.artist)")
                             .font(.callout)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .oneLine()
                     }
                     if let error = player.error {
                         Label("Le disque saute : \(error)", systemImage: "exclamationmark.triangle.fill")

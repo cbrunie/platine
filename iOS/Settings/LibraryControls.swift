@@ -437,8 +437,8 @@ struct ReviewPane: View {
                         HStack(spacing: 12) {
                             Cover(path: ReviewDetailView.cover(item), size: 48, radius: 6)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item["album_title"]?.string ?? "").lineLimit(1)
-                                Text(item["artist_name"]?.string ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                                Text(item["album_title"]?.string ?? "").oneLine()
+                                Text(item["artist_name"]?.string ?? "").font(.subheadline).foregroundStyle(.secondary).oneLine()
                                 Text(item["reason"]?["message"]?.string ?? ReviewDetailView.reason(item["reason_code"]?.string))
                                     .font(.caption).foregroundStyle(.yellow).lineLimit(2)
                             }
@@ -639,12 +639,12 @@ struct ReviewDetailView: View {
             HStack(spacing: 12) {
                 Cover(path: DroppedNeedle.cover(nil, album: candidate["release_group_mbid"]?.string), size: 52, radius: 6)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(candidate["album_title"]?.string ?? "").lineLimit(1)
+                    Text(candidate["album_title"]?.string ?? "").oneLine()
                     Text([candidate["album_artist_name"]?.string, total > 0 ? "\(fit) plages sur \(total) concordent" : nil,
                           contradictions > 0 ? "\(contradictions) ne collent pas" : nil]
                         .compactMap(\.self).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
                     Text("Score \(candidate["score"]?.number ?? 0, format: .number.precision(.fractionLength(2)))")
-                        .font(.caption2).foregroundStyle(.tertiary)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 if candidate["candidate_key"] == selected, selected != nil, selected != .null {
@@ -727,7 +727,7 @@ struct HistoryPane: View {
                     // La pastille d'état centrée sur les deux lignes, pas collée à la première.
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(item["profile_name"]?.string ?? Self.mode(item["mode"]?.string)).lineLimit(1)
+                            Text(item["profile_name"]?.string ?? Self.mode(item["mode"]?.string)).oneLine()
                             Text("\(Self.mode(item["mode"]?.string)) · \(item["origin"]?.string?.replacingOccurrences(of: "_", with: " ") ?? "")")
                                 .font(.caption).foregroundStyle(.secondary)
                         }

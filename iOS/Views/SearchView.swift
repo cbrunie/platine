@@ -195,7 +195,7 @@ struct SearchView: View {
                     Button { text = recent } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "clock.arrow.circlepath").foregroundStyle(Color.sage)
-                            Text(recent).lineLimit(1)
+                            Text(recent).oneLine()
                             Spacer(minLength: 0)
                         }
                         .contentShape(.rect)

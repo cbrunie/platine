@@ -129,7 +129,7 @@ struct RootTabs: View {
                     } else {
                         Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(Color.sage)
                     }
-                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").lineLimit(1)
+                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").oneLine()
                     Spacer(minLength: 0)
                 }
                 .row(selected: selection == "account")

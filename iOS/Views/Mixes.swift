@@ -58,7 +58,7 @@ struct MixCard: View {
             }
             .frame(width: width, height: width)
             .clipShape(.rect(cornerRadius: 10))
-            Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(subtitle).font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)
@@ -109,7 +109,7 @@ struct DailyMixCard: View {
                         Text(number).font(.display(width * 0.32, relativeTo: .largeTitle))
                         if !genre.isEmpty { Text(GenreEmblem.emoji(for: genre)).font(.system(size: width * 0.14)) }
                     }
-                    Text(genre).font(.display(width * 0.1, relativeTo: .headline)).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(genre).font(.display(width * 0.1, relativeTo: .headline)).oneLine().minimumScaleFactor(0.7)
                 }
                 .foregroundStyle(.white)
                 .padding(width * 0.08)
@@ -118,7 +118,7 @@ struct DailyMixCard: View {
             .clipShape(.rect(cornerRadius: 10))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(mix.title)
-            Text("Daily Mix \(number) · fait pour toi").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text("Daily Mix \(number) · fait pour toi").font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)
@@ -165,7 +165,7 @@ struct DecadeCard: View {
             .clipShape(.rect(cornerRadius: 10))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Les années \(year)")
-            Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(subtitle).font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)
@@ -418,7 +418,7 @@ struct PlaylistDiscoveryView: View {
                         HStack(spacing: 12) {
                             Cover(path: playlist.covers.first ?? nil, size: 48)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(playlist.name).lineLimit(1)
+                                Text(playlist.name).oneLine()
                                 if let count = playlist.trackCount {
                                     Text("\(count) plages").font(.caption).foregroundStyle(.secondary)
                                 }
@@ -512,9 +512,9 @@ struct SourceCard: View {
                 let tracks = await source.tracks(using: client)
                 if !tracks.isEmpty { player.play(tracks, source: source, using: client) }
             }
-            Text(source.title).font(.subheadline.weight(.medium)).lineLimit(1)
+            Text(source.title).font(.subheadline.weight(.medium)).oneLine()
             Label(source.subtitle, systemImage: [.playlist: "music.note.list", .radio: "dot.radiowaves.left.and.right"][source.kind] ?? "square.stack")
-                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                .font(.caption).foregroundStyle(.secondary).oneLine()
         }
         .frame(width: width)
         .foregroundStyle(.primary)

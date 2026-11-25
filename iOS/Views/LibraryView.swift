@@ -53,7 +53,7 @@ struct LibraryView: View {
                 Image(systemName: symbol).font(.title3).foregroundStyle(Color.sage).frame(width: 30)
                 Text(title).font(.title3)
                 Spacer()
-                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
             }
             .padding(.vertical, 12)
             .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.08)).frame(height: 0.5).padding(.leading, 44) }
@@ -442,7 +442,7 @@ struct ArtistsView: View {
         let content = HStack(spacing: 14) {
             Cover(path: ArtistDirectory.shared.ref(id: artist.musicbrainzArtistId, named: artist.name)
                 .map { DroppedNeedle.artistImage($0.id) }, size: 48, radius: 24)
-            Text(artist.name).lineLimit(1)
+            Text(artist.name).oneLine()
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
                 if sort == .listens, let count = listens?.count(artist: artist.name) {
@@ -600,7 +600,7 @@ struct PlaylistsView: View {
                                     let tracks = await source.tracks(using: client)
                                     if !tracks.isEmpty { player.play(tracks, source: source, using: client) }
                                 }
-                            Text(playlist.name).font(.subheadline.weight(.medium)).lineLimit(1)
+                            Text(playlist.name).font(.subheadline.weight(.medium)).oneLine()
                             Text(playlist.isOwner == false ? "De \(playlist.ownerName ?? "quelqu'un")"
                                  : "^[\(playlist.trackCount ?? 0) plage](inflect: true)")
                                 .font(.caption).foregroundStyle(.secondary)

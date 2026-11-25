@@ -76,11 +76,11 @@ struct DownloadsView: View {
         return HStack(spacing: 12) {
             Cover(path: DroppedNeedle.cover(nil, album: task["release_group_mbid"]?.string), size: 52, radius: 6)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).lineLimit(1)
-                Text(task["artist_name"]?.string ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(title).oneLine()
+                Text(task["artist_name"]?.string ?? "").font(.subheadline).foregroundStyle(.secondary).oneLine()
                 HStack(spacing: 6) {
                     Pill(text: Self.statusName(status), color: Self.statusColor(status))
-                    Text(task["source"]?.string?.capitalized ?? "").font(.caption).foregroundStyle(.tertiary)
+                    Text(task["source"]?.string?.capitalized ?? "").font(.caption).foregroundStyle(.secondary)
                 }
                 if status == "downloading", let progress = task["progress_percent"]?.number {
                     ProgressView(value: progress, total: 100).tint(Color.sage)
@@ -110,10 +110,10 @@ struct DownloadsView: View {
         let first = files.first
         let title = item["album_title"]?.string ?? first?["track_title"]?.string ?? first?["original_name"]?.string ?? "Fichier"
         return VStack(alignment: .leading, spacing: 3) {
-            Text(title).lineLimit(1)
+            Text(title).oneLine()
             Text([item["artist_name"]?.string, files.count > 1 ? "\(files.count) fichiers" : nil].compactMap(\.self)
                 .joined(separator: " · "))
-                .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                .font(.subheadline).foregroundStyle(.secondary).oneLine()
             Text(first?["reason_text"]?.string ?? first?["reason_detail"]?.string ?? "")
                 .font(.caption).foregroundStyle(.yellow).lineLimit(2)
         }
@@ -331,9 +331,9 @@ struct RadioView: View {
                         HStack(spacing: 12) {
                             Cover(path: DroppedNeedle.cover(nil, album: track.albumID), size: 44)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(track.title).lineLimit(1).foregroundStyle(.secondary)
+                                Text(track.title).oneLine().foregroundStyle(.secondary)
                                 Text([track.artist, track.album].compactMap(\.self).joined(separator: " · "))
-                                    .font(.subheadline).foregroundStyle(.tertiary).lineLimit(1)
+                                    .font(.subheadline).foregroundStyle(.secondary).oneLine()
                             }
                             Spacer(minLength: 0)
                             if track.artistID.map(albumsKnown.contains) ?? true {

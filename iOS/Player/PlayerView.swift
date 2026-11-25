@@ -158,12 +158,12 @@ struct PlayerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track?.title ?? "Platine à l'arrêt")
                         .font(.display(22, relativeTo: .title2))
-                        .lineLimit(1)
+                        .oneLine()
                     Button { open(track?.artistRoute) } label: {
                         Text(track?.artist ?? " ")
                             .font(.title3)
                             .foregroundStyle(.white.opacity(0.6))
-                            .lineLimit(1)
+                            .oneLine()
                     }
                     .disabled(track?.artistRoute == nil)
                 }

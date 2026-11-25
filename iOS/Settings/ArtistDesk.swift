@@ -87,7 +87,7 @@ private struct ArtistGroupView: View {
                                     Text("\(member?["album_credit_count"]?.int ?? 0) albums · \(member?["track_credit_count"]?.int ?? 0) plages · \(member?["favorite_count"]?.int ?? 0) favoris")
                                         .font(.caption).foregroundStyle(.secondary)
                                     if let mbid = member?["provider_mbid"]?.string {
-                                        Text(mbid).font(.caption2.monospaced()).foregroundStyle(.tertiary)
+                                        Text(mbid).font(.caption2.monospaced()).foregroundStyle(.secondary)
                                     }
                                 }
                             }

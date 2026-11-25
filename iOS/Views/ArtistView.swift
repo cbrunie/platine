@@ -302,9 +302,9 @@ struct ArtistView: View {
         HStack(spacing: 12) {
             Text(String(index + 1)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 20)
             VStack(alignment: .leading, spacing: 2) {
-                Text(song.title).lineLimit(1)
+                Text(song.title).oneLine()
                 if let release = song.releaseName {
-                    Text(release).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(release).font(.caption).foregroundStyle(.secondary).oneLine()
                 }
             }
             Spacer(minLength: 0)

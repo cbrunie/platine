@@ -27,7 +27,7 @@ struct ConcertsView: View {
             Section {
                 NavigationLink { CitiesView() } label: {
                     LabeledContent("Mes villes") {
-                        Text(cities.isEmpty ? "Aucune" : cities.map(\.cityName).joined(separator: ", ")).lineLimit(1)
+                        Text(cities.isEmpty ? "Aucune" : cities.map(\.cityName).joined(separator: ", ")).oneLine()
                     }
                 }
             } footer: {

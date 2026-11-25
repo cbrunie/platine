@@ -385,7 +385,7 @@ struct StatGrid: View {
             ForEach(items.indices, id: \.self) { index in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(items[index].value.formatted()).font(.display(22, relativeTo: .title3)).monospacedDigit()
-                    Text(items[index].label).font(.caption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(items[index].label).font(.caption).foregroundStyle(.secondary).oneLine().minimumScaleFactor(0.8)
                 }
             }
         }
@@ -465,7 +465,7 @@ struct TrailingDisclosureStyle: DisclosureGroupStyle {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .rotationEffect(.degrees(configuration.isExpanded ? 90 : 0))
             }
             .contentShape(.rect)

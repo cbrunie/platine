@@ -82,3 +82,14 @@ struct Pill: View {
             .foregroundStyle(Color.base100)
     }
 }
+
+extension View {
+    /// Une ligne d'ordinaire ; jusqu'à trois en très grand texte (tailles d'accessibilité),
+    /// pour qu'un titre reste lisible au lieu de finir en « Quand… ».
+    func oneLine() -> some View { modifier(OneLine()) }
+}
+
+private struct OneLine: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var size
+    func body(content: Content) -> some View { content.lineLimit(size.isAccessibilitySize ? 3 : 1) }
+}

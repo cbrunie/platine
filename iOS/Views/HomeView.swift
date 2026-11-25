@@ -204,7 +204,7 @@ struct HomeView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 }
                 .padding(14)
                 .background(Color.base200, in: .rect(cornerRadius: 14))
@@ -264,9 +264,9 @@ struct HomeView: View {
                     Cover(path: pick.album.artwork, size: 110, radius: 10)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pick.album.name).font(.headline).lineLimit(2)
-                        Text(pick.album.artistName ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        Text(pick.album.artistName ?? "").font(.subheadline).foregroundStyle(.secondary).oneLine()
                         if let seed = pick.seedArtist {
-                            Text("Parce que tu écoutes \(seed)").font(.caption).foregroundStyle(.tertiary).lineLimit(2)
+                            Text("Parce que tu écoutes \(seed)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }
                     }
                     Spacer(minLength: 0)

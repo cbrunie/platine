@@ -93,7 +93,7 @@ struct SpotifyImportView: View {
                 HStack(spacing: 12) {
                     Cover(path: playlist.coverUrl, size: 56, radius: 6)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(playlist.name).lineLimit(1)
+                        Text(playlist.name).oneLine()
                         Text("^[\(playlist.trackCount) plage](inflect: true) · \(playlist.owner)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -209,10 +209,10 @@ struct FollowingView: View {
                         HStack(spacing: 12) {
                             Cover(path: release.album.cover, size: 56, radius: 6)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(release.title).lineLimit(1)
-                                Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                                Text(release.title).oneLine()
+                                Text(release.artistName).font(.subheadline).foregroundStyle(.secondary).oneLine()
                                 Text([Self.type(release.primaryType), release.firstReleaseDate].compactMap(\.self).joined(separator: " · "))
-                                    .font(.caption).foregroundStyle(.tertiary)
+                                    .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer(minLength: 0)
                             if release.inLibrary == true { Pill(text: "Dans les bacs") }

@@ -10,12 +10,12 @@ struct MiniPlayer: View {
             Cover(path: track?.cover, size: 30, radius: 15)
             VStack(alignment: .leading, spacing: 0) {
                 Text(track?.title ?? "Platine à l'arrêt")
-                    .font(.subheadline.weight(.medium)).lineLimit(1)
+                    .font(.subheadline.weight(.medium)).oneLine()
                 if let error = player.error {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.yellow).lineLimit(1)
+                        .font(.caption).foregroundStyle(.yellow).oneLine()
                 } else if let track {
-                    Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(track.artist).font(.caption).foregroundStyle(.secondary).oneLine()
                 }
             }
             Spacer(minLength: 0)

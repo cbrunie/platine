@@ -26,8 +26,8 @@ struct MiniPlayerWindow: View {
             Turntable(cover: track?.cover, isPlaying: player.isPlaying)
                 .frame(width: 240, height: 240)
             VStack(spacing: 2) {
-                Text(track?.title ?? "Platine à l'arrêt").font(.headline).lineLimit(1)
-                Text(track?.artist ?? " ").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(track?.title ?? "Platine à l'arrêt").font(.headline).oneLine()
+                Text(track?.artist ?? " ").font(.subheadline).foregroundStyle(.secondary).oneLine()
             }
             HStack(spacing: 34) {
                 Button { player.previous() } label: { Image(systemName: "backward.fill") }

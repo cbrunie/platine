@@ -216,6 +216,7 @@ private struct MiniPlayerRoot: View {
 /// puis s'efface sur l'app.
 private struct Splash: View {
     @State private var turning = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Image("Record")
@@ -224,6 +225,6 @@ private struct Splash: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.base100)
             .ignoresSafeArea()
-            .onAppear { turning = true }
+            .onAppear { turning = !reduceMotion }
     }
 }
