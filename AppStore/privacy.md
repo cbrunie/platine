@@ -9,7 +9,7 @@ Platine ne collecte aucune donnée personnelle.
 - Ton identifiant de session est conservé dans le trousseau (Keychain) de ton appareil. Tes préférences, ton historique de recherche et tes compteurs d'écoute restent sur l'appareil et sont effacés à la déconnexion.
 - Aucune donnée n'est vendue, partagée ni envoyée au développeur.
 
-Contact : <ton e-mail de contact>
+Contact : https://github.com/cbrunie/platine/issues
 
 ---
 
@@ -17,4 +17,4 @@ Contact : <ton e-mail de contact>
 
 Platine does not collect any personal data. It has no ads, analytics or third-party SDKs. The app only talks to the DroppedNeedle server whose address you enter; we have no access to it. Your session token is stored in the device Keychain; preferences, search history and play counts stay on the device and are erased when you sign out. No data is sold, shared or sent to the developer.
 
-Contact: <your contact e-mail>
+Contact: https://github.com/cbrunie/platine/issues
