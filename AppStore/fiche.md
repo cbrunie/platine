@@ -55,6 +55,11 @@ music,player,flac,selfhosted,server,library,vinyl,albums,carplay,playlist,lossle
 First release of Platine.
 ```
 
+- **Copyright** : `2026 cbrunie`
+- **Support URL** : `https://github.com/cbrunie/platine/issues`
+- **Marketing URL** : `https://github.com/cbrunie/platine`
+- **Privacy Policy URL** : `https://github.com/cbrunie/platine/blob/main/AppStore/privacy.md`
+
 Les notes pour la vérification ci-dessous sont déjà en anglais. Le français plus bas peut être ajouté comme seconde langue (menu de langue en haut à droite de la fiche → Français).
 
 ## Informations de l'app (version française)
@@ -64,10 +69,10 @@ Les notes pour la vérification ci-dessous sont déjà en anglais. Le français 
 - **Sous-titre** (30 max) : `Ta discothèque DroppedNeedle`
 - **Catégorie principale** : Musique
 - **Catégorie secondaire** : Divertissement
-- **Copyright** : `2026 <ton nom>`
+- **Copyright** : `2026 cbrunie`
 - **Prix** : Gratuit
-- **URL d'assistance** : `<à remplir : page GitHub ou mail de contact>`
-- **URL de confidentialité** : `<à remplir : héberger privacy.md, ex. GitHub Pages>`
+- **URL d'assistance** : `https://github.com/cbrunie/platine/issues`
+- **URL de confidentialité** : `https://github.com/cbrunie/platine/blob/main/AppStore/privacy.md`
 
 ## Texte promotionnel (170 max)
 
