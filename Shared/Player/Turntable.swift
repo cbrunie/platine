@@ -83,14 +83,6 @@ struct Turntable: View {
                         .fill(RadialGradient(colors: [Color(hex: 0xD2EAB8), Color(hex: 0x9FC27F)],
                                              center: UnitPoint(x: 0.35, y: 0.35), startRadius: 0, endRadius: side * 0.2))
                         .overlay(Circle().strokeBorder(Color.base100.opacity(0.25), lineWidth: 1.5).padding(side * 0.045))
-                        // Le nom imprimé sur l'étiquette : sans lui, un disque uni qui tourne paraît immobile.
-                        .overlay(alignment: .top) {
-                            Text("PLATINE")
-                                .font(.display(side * 0.026))
-                                .tracking(side * 0.004)
-                                .foregroundStyle(Color.base100.opacity(0.55))
-                                .padding(.top, side * 0.07)
-                        }
                         .frame(width: side * 0.33, height: side * 0.33)
                 }
             }
