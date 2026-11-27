@@ -7,6 +7,9 @@ struct LoginView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var working = false
+    /// Le bras se pose sur le disque à l'arrivée sur l'écran.
+    @State private var playing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var error: String?
     @FocusState private var focus: Field?
 
@@ -87,7 +90,7 @@ struct LoginView: View {
                 .padding(.bottom, 40)
                 .background(alignment: .top) {
                     // Le disque du lecteur, coupé par le haut de l'écran.
-                    Turntable(cover: nil, isPlaying: true)
+                    Turntable(cover: nil, isPlaying: playing)
                         .frame(width: side, height: side)
                         .offset(y: -side * 0.45)
                         .frame(maxWidth: .infinity)
@@ -101,9 +104,20 @@ struct LoginView: View {
         .background {
             ZStack {
                 Color.base100
-                RadialGradient(colors: [Color.sage.opacity(0.18), .clear], center: .top, startRadius: 0, endRadius: 500)
+                // Un halo sauge qui respire sous le disque, en 6 s.
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
+                    let breath = reduceMotion ? 0.5 : (1 + sin(context.date.timeIntervalSinceReferenceDate * .pi / 3)) / 2
+                    RadialGradient(colors: [Color.sage.opacity(0.12 + 0.14 * breath), .clear], center: .top,
+                                   startRadius: 0, endRadius: 440 + 120 * breath)
+                }
             }
             .ignoresSafeArea()
+        }
+        .task {
+            guard !playing else { return }
+            if reduceMotion { playing = true; return }
+            try? await Task.sleep(for: .seconds(0.6))
+            withAnimation(.spring(duration: 1.4, bounce: 0.15)) { playing = true }
         }
     }
 
