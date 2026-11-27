@@ -543,7 +543,8 @@ private struct RecommendationsStatus: View {
     @State private var gaveUp = false
     @State private var failure: String?
 
-    private var computing: Bool { !gaveUp && (sent || discover.isPending) }
+    /// Le bandeau ne paraît que pour un calcul demandé, ou s'il n'y a encore rien à montrer.
+    private var computing: Bool { !gaveUp && (sent || (discover.isPending && discover.isEmpty)) }
 
     var body: some View {
         Group {
@@ -572,6 +573,11 @@ private struct RecommendationsStatus: View {
                     }
                 }
                 .padding(.horizontal)
+            } else {
+                // Les recommandations ne se recalculent que sur demande.
+                Button("Recalculer mes recommandations", systemImage: "arrow.clockwise", action: start)
+                    .font(.footnote).foregroundStyle(.secondary).buttonStyle(.borderless)
+                    .padding(.horizontal)
             }
         }
         .task(id: computing) {
@@ -579,7 +585,7 @@ private struct RecommendationsStatus: View {
             for _ in 0..<120 {
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled else { return }
-                if let state = try? await client.discover(), !state.isPending {
+                if let state = try? await client.discover(), !state.fromCache, !state.isPending {
                     sent = false
                     finished(state)
                     return

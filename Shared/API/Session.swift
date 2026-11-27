@@ -59,6 +59,7 @@ final class Session {
 
     func logout() {
         Keychain.token = nil
+        try? FileManager.default.removeItem(at: DroppedNeedle.discoverCache)
         // Ses recherches ne doivent pas rester pour le compte suivant.
         UserDefaults.standard.removeObject(forKey: "searchHistory")
         UserDefaults.standard.removeObject(forKey: "listenCounts")

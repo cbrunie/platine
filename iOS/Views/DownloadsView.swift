@@ -467,11 +467,11 @@ struct RadioSeed {
         // La radio d'un mix : d'abord ses disques, s'ils suffisent.
         var planned: [JSON] = []
         if !items.isEmpty {
-            planned = try await radioPlan(using: client, ["seed_type": .string("items"), "mode": .string("library"), "items": .array(items.compactMap { item in
+            planned = Self.spread(try await radioPlan(using: client, ["seed_type": .string("items"), "mode": .string("library"), "items": .array(items.compactMap { item in
                 guard let album = item.mbid, let artist = item.artistMbid else { return nil }
                 return .object(["artist_mbid": .string(artist), "artist_name": .string(item.artistName ?? ""),
                                 "album_mbid": .string(album), "album_name": .string(item.name)])
-            })])
+            })]))
             if planned.count >= 20 { return planned }
         }
 
@@ -480,13 +480,18 @@ struct RadioSeed {
             // Un genre, ou l'artiste introuvable : le serveur fait ce qu'il peut.
             var seed: [String: JSON] = ["seed_type": .string(seedType), "mode": .string("hybrid")]
             if let seedID { seed["seed_id"] = .string(seedID) }
-            return try await radioPlan(using: client, seed)
+            return Self.spread(try await radioPlan(using: client, seed))
         }
         let more = try await radioPlan(using: client, ["seed_type": .string("items"), "mode": .string("hybrid"), "items": .array(artists.map {
             .object(["artist_mbid": .string($0.id), "artist_name": .string($0.name)])
         })])
         var seen = Set(planned.map(Self.key))
-        return planned + more.filter { seen.insert(Self.key($0)).inserted }
+        return Self.spread(planned + more.filter { seen.insert(Self.key($0)).inserted })
+    }
+
+    /// Le serveur enchaîne les plages d'un même album : deux par album au plus, et les albums alternés.
+    private static func spread(_ plan: [JSON]) -> [JSON] {
+        plan.interleaved(cap: 2) { $0["album_mbid"]?.string ?? $0["album_name"]?.string ?? key($0) }
     }
 
     private func radioPlan(using client: DroppedNeedle, _ seed: [String: JSON]) async throws -> [JSON] {

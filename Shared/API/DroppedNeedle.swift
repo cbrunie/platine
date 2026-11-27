@@ -85,8 +85,14 @@ struct DroppedNeedle: Sendable {
     }
 
     /// « In the Crate » : des pistes de la bibliothèque, avec la raison de chacune.
+    /// Le serveur remplit surtout le bac de disques fraîchement téléchargés : on lui en demande
+    /// deux fois plus (40, son maximum) et on garde 20 plages en alternant les raisons (récent, à redécouvrir, même époque, surprise).
     func crate() async throws -> Crate {
-        try await send("GET", "/library/suggestions", query: [URLQueryItem(name: "limit", value: "20")])
+        var crate: Crate = try await send("GET", "/library/suggestions", query: [URLQueryItem(name: "limit", value: "40")])
+        // Deux plages par album au plus : les « Récent » viennent souvent toutes du même disque.
+        let varied = crate.items.interleaved(cap: 2) { $0.albumId ?? $0.albumName }
+        crate.items = Array(varied.interleaved { $0.reason ?? "" }.prefix(20))
+        return crate
     }
 
     func searchLibrary(_ text: String) async throws -> LibrarySearch {
@@ -113,10 +119,23 @@ struct DroppedNeedle: Sendable {
         try await send("GET", "/home")
     }
 
-    /// Les recommandations de la page Discover du web.
+    /// Les recommandations de la page Discover du web. Pendant que le serveur les recalcule, il les
+    /// renvoie vides : on garde alors les dernières reçues, rangées sur l'appareil.
     func discover() async throws -> Discover {
-        try await send("GET", "/discover")
+        let data = try JSONEncoder().encode(try await json("GET", "/discover"))
+        let latest = try Self.decoder.decode(Discover.self, from: data)
+        if latest.generatedAt != nil {
+            try? data.write(to: Self.discoverCache)
+            return latest
+        }
+        guard let saved = try? Data(contentsOf: Self.discoverCache),
+              var cached = try? Self.decoder.decode(Discover.self, from: saved) else { return latest }
+        cached.fromCache = true
+        return cached
     }
+
+    /// ponytail: un seul fichier, effacé à la déconnexion ; une clé par compte si l'app en gère plusieurs.
+    static let discoverCache = URL.cachesDirectory.appending(path: "discover.json")
 
     func refreshDiscover() async throws {
         let _: Empty = try await send("POST", "/discover/refresh")
@@ -842,7 +861,7 @@ struct LocalTrack: Decodable, Sendable {
 }
 
 struct Crate: Decodable, Sendable {
-    let items: [CrateTrack]
+    var items: [CrateTrack]
 
     init(from decoder: Decoder) throws {
         items = try decoder.container(keyedBy: AnyKey.self).lossyList(AnyKey("items"))
@@ -1928,6 +1947,8 @@ struct Discover: Decodable, Sendable {
     let globallyTrending: HomeSection?
     let refreshing: Bool?
     let generatedAt: Double?
+    /// Les dernières recommandations gardées sur l'appareil, pendant que le serveur recalcule.
+    var fromCache = false
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
@@ -2077,3 +2098,22 @@ enum V3DecodingCheck {
     }
 }
 #endif
+
+extension Array {
+    /// Alterne les groupes (un élément de chacun à tour de rôle), dans l'ordre où ils apparaissent,
+    /// avec au plus `cap` éléments par groupe.
+    func interleaved(cap: Int = .max, by group: (Element) -> String) -> [Element] {
+        var order: [String] = []
+        var groups: [String: [Element]] = [:]
+        for item in self {
+            let key = group(item)
+            if groups[key] == nil { order.append(key) }
+            if groups[key, default: []].count < cap { groups[key, default: []].append(item) }
+        }
+        var result: [Element] = []
+        for round in 0 ..< (groups.values.map(\.count).max() ?? 0) {
+            for key in order where round < groups[key]!.count { result.append(groups[key]![round]) }
+        }
+        return result
+    }
+}
