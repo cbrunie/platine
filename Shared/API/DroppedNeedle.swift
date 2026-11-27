@@ -15,7 +15,6 @@ nonisolated struct DroppedNeedle: Sendable {
 
         var errorDescription: String? {
             switch self {
-            case let .status(0, message): message
             case let .status(code, message): "Erreur \(code) : \(message)"
             }
         }
@@ -26,47 +25,6 @@ nonisolated struct DroppedNeedle: Sendable {
     func login(username: String, password: String) async throws -> AuthResponse {
         // « bearer » : le jeton dans la réponse, sans cookie de navigateur.
         try await send("POST", "/auth/login", body: ["username": username, "password": password, "transport": "bearer"])
-    }
-
-    // MARK: App Connect
-
-    /// Platine telle que l'admin l'autorise sur le serveur (Réglages › Applis connectées), et l'adresse
-    /// où le navigateur la rappelle. Voir `docs/app-connect.md` de DroppedNeedle.
-    static let appConnectClient = "fr.cbrunie.platine"
-    static let appConnectScheme = "fr.cbrunie.platine"
-    static let appConnectReturn = "fr.cbrunie.platine:/connect"
-
-    /// La page du serveur où l'on se connecte puis autorise Platine (OAuth 2.0 avec PKCE).
-    func appConnectURL(challenge: String, state: String, device: String) -> URL? {
-        var components = URLComponents(url: server.appending(path: "connect"), resolvingAgainstBaseURL: false)
-        components?.queryItems = [
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "client_id", value: Self.appConnectClient),
-            URLQueryItem(name: "redirect_uri", value: Self.appConnectReturn),
-            URLQueryItem(name: "code_challenge", value: challenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256"),
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "name", value: device),
-        ]
-        return components?.url
-    }
-
-    /// Échange le code reçu du navigateur contre une session d'appareil, valable deux minutes et une fois.
-    @concurrent
-    func appConnectToken(code: String, verifier: String) async throws -> AppConnectToken {
-        var request = URLRequest(url: server.appending(path: Self.prefix + "/auth/app-connect/token"))
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        var form = URLComponents()
-        form.queryItems = [
-            URLQueryItem(name: "grant_type", value: "authorization_code"),
-            URLQueryItem(name: "code", value: code),
-            URLQueryItem(name: "redirect_uri", value: Self.appConnectReturn),
-            URLQueryItem(name: "client_id", value: Self.appConnectClient),
-            URLQueryItem(name: "code_verifier", value: verifier),
-        ]
-        request.httpBody = Data((form.percentEncodedQuery ?? "").utf8)
-        return try Self.decoder.decode(AppConnectToken.self, from: try await data(request))
     }
 
     func discoverQueue() async throws -> DiscoverQueue {
@@ -603,8 +561,6 @@ nonisolated struct DroppedNeedle: Sendable {
         if let error = json?["error"] as? [String: Any], let message = error["message"] as? String {
             return message
         }
-        // App Connect répond `{"error": "invalid_client"}`.
-        if let code = json?["error"] as? String { return code }
         return json?["detail"] as? String ?? String(decoding: data.prefix(200), as: UTF8.self)
     }
 }
@@ -648,13 +604,6 @@ nonisolated struct AuthResponse: Decodable, Sendable {
     /// Seulement en mode « bearer », celui que demande l'app.
     let token: String?
     let user: User
-}
-
-/// La réponse d'App Connect : une session d'appareil pour l'API de DroppedNeedle, ou un mot de passe
-/// d'appli (Subsonic, Jellyfin) si l'admin a enregistré Platine pour ça, inutilisable ici.
-nonisolated struct AppConnectToken: Decodable, Sendable {
-    let accessToken: String
-    let credentialKind: String?
 }
 
 nonisolated struct User: Decodable, Sendable {
