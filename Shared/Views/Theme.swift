@@ -93,3 +93,14 @@ private struct OneLine: ViewModifier {
     @Environment(\.dynamicTypeSize) private var size
     func body(content: Content) -> some View { content.lineLimit(size.isAccessibilitySize ? 3 : 1) }
 }
+
+extension View {
+    /// Comme `.task`, lancé deux fois : d'abord avec les réponses gardées sur l'appareil, affichées
+    /// aussitôt, puis avec le serveur. L'action ne doit rien effacer quand une réponse manque.
+    func diskFirstTask(_ action: @escaping () async -> Void) -> some View {
+        task {
+            await DroppedNeedle.$fromDisk.withValue(true) { await action() }
+            await action()
+        }
+    }
+}

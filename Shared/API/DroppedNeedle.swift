@@ -1,9 +1,10 @@
+import CryptoKit
 import Foundation
 
 /// Client de l'API REST de DroppedNeedle.
 ///
 /// Seule la v3 de DroppedNeedle est gérée : la v2 (`/api/v1`) n'existe plus côté serveur.
-struct DroppedNeedle: Sendable {
+nonisolated struct DroppedNeedle: Sendable {
     static let prefix = "/api/v3"
 
     let server: URL
@@ -438,10 +439,11 @@ struct DroppedNeedle: Sendable {
 
     /// Une pochette : elles passent par l'API authentifiée, que `AsyncImage`
     /// ne sait pas interroger avec un jeton.
+    @concurrent
     func image(_ path: String) async throws -> Data {
         let url = path.hasPrefix("http") ? URL(string: path) : URL(string: path, relativeTo: server)
         guard let url else { throw URLError(.badURL) }
-        return try await data(URLRequest(url: url))
+        return try await data(URLRequest(url: url), keeps: false)
     }
 
     // MARK: Transport
@@ -458,6 +460,7 @@ struct DroppedNeedle: Sendable {
         return encoder
     }()
 
+    @concurrent
     fileprivate func send<Response: Decodable>(
         _ method: String,
         _ path: String,
@@ -484,6 +487,7 @@ struct DroppedNeedle: Sendable {
 
     /// Une route lue et écrite telle quelle, pour les réglages : les clés restent
     /// en snake_case, comme le serveur les attend en retour.
+    @concurrent
     func json(_ method: String, _ path: String, body: JSON? = nil) async throws -> JSON {
         guard let url = URL(string: Self.prefix + path, relativeTo: server) else { throw URLError(.badURL) }
         var request = URLRequest(url: url)
@@ -513,7 +517,23 @@ struct DroppedNeedle: Sendable {
         return data.isEmpty ? .null : try JSONDecoder().decode(JSON.self, from: data)
     }
 
-    private func data(_ request: URLRequest) async throws -> Data {
+    /// Le temps d'un `withValue(true)`, les GET répondent depuis le disque (la dernière réponse reçue),
+    /// sans réseau ; une réponse jamais reçue lève une erreur. Les pages s'affichent ainsi tout de suite.
+    @TaskLocal static var fromDisk = false
+    nonisolated static let responses = URL.cachesDirectory.appending(path: "api")
+
+    /// Un nom de fichier stable pour une adresse.
+    nonisolated static func fileName(_ key: String) -> String {
+        SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    @concurrent
+    private func data(_ request: URLRequest, keeps: Bool = true) async throws -> Data {
+        let file = keeps && request.httpMethod == "GET" ? request.url.map { Self.responses.appending(path: Self.fileName($0.absoluteString)) } : nil
+        if Self.fromDisk {
+            guard let file, let saved = try? Data(contentsOf: file) else { throw URLError(.resourceUnavailable) }
+            return saved
+        }
         var request = request
         // Le jeton ne part que vers notre serveur, jamais vers les images externes.
         if request.url?.host() == server.host() {
@@ -523,10 +543,14 @@ struct DroppedNeedle: Sendable {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         // Jeton refusé (expiré, révoqué, ou d'avant la v3) : retour à l'écran de connexion.
         if status == 401, token != nil, request.url?.host() == server.host() {
-            Session.shared.logout()
+            await Session.shared.logout()
         }
         guard (200 ..< 300).contains(status) else {
             throw Failure.status(status, Self.message(in: data))
+        }
+        if let file {
+            try? FileManager.default.createDirectory(at: Self.responses, withIntermediateDirectories: true)
+            try? data.write(to: file, options: .atomic)
         }
         return data
     }
@@ -545,20 +569,20 @@ struct DroppedNeedle: Sendable {
 
 /// Lit chaque élément d'une liste à part : un élément d'une forme inattendue est sauté
 /// plutôt que de faire échouer toute la liste.
-struct Lossy<Element: Decodable>: Decodable {
+nonisolated struct Lossy<Element: Decodable>: Decodable {
     let value: Element?
 
     init(from decoder: Decoder) throws { value = try? Element(from: decoder) }
 }
 
-extension KeyedDecodingContainer {
+nonisolated extension KeyedDecodingContainer {
     func lossyList<T: Decodable>(_ key: Key) -> [T] {
         ((try? decodeIfPresent([Lossy<T>].self, forKey: key)) ?? nil)?.compactMap(\.value) ?? []
     }
 }
 
 /// Les clés de la v3 telles quelles, quand un modèle de l'app ne leur ressemble pas.
-struct AnyKey: CodingKey {
+nonisolated struct AnyKey: CodingKey {
     let stringValue: String
     var intValue: Int? { nil }
 
@@ -572,24 +596,24 @@ struct AnyKey: CodingKey {
     init?(intValue: Int) { nil }
 }
 
-extension KeyedDecodingContainer where Key == AnyKey {
+nonisolated extension KeyedDecodingContainer where Key == AnyKey {
     func value<T: Decodable>(_ key: String) -> T? { (try? decodeIfPresent(T.self, forKey: AnyKey(key))) ?? nil }
 }
 
-struct AuthResponse: Decodable, Sendable {
+nonisolated struct AuthResponse: Decodable, Sendable {
     /// Seulement en mode « bearer », celui que demande l'app.
     let token: String?
     let user: User
 }
 
-struct User: Decodable, Sendable {
+nonisolated struct User: Decodable, Sendable {
     let id: String
     let displayName: String
     /// user, trusted ou admin.
     let role: String
 }
 
-struct DiscoverQueue: Decodable, Sendable {
+nonisolated struct DiscoverQueue: Decodable, Sendable {
     let items: [DiscoverItem]
 
     init(from decoder: Decoder) throws {
@@ -597,7 +621,7 @@ struct DiscoverQueue: Decodable, Sendable {
     }
 }
 
-struct DiscoverItem: Decodable, Sendable, Identifiable {
+nonisolated struct DiscoverItem: Decodable, Sendable, Identifiable {
     let releaseGroupMbid: String
     let albumName: String
     let artistName: String
@@ -620,7 +644,7 @@ struct DiscoverItem: Decodable, Sendable, Identifiable {
     }
 }
 
-struct SearchResponse: Decodable, Sendable {
+nonisolated struct SearchResponse: Decodable, Sendable {
     let artists: [SearchResult]?
     let albums: [SearchResult]
 
@@ -632,7 +656,7 @@ struct SearchResponse: Decodable, Sendable {
     }
 }
 
-struct SearchResult: Decodable, Sendable, Identifiable {
+nonisolated struct SearchResult: Decodable, Sendable, Identifiable {
     let title: String
     let musicbrainzId: String
     let artist: String?
@@ -657,19 +681,19 @@ struct SearchResult: Decodable, Sendable, Identifiable {
     }
 }
 
-struct AlbumRequest: Encodable, Sendable {
+nonisolated struct AlbumRequest: Encodable, Sendable {
     let musicbrainzId: String
     let artist: String?
     let album: String?
     let year: Int?
 }
 
-struct RequestAccepted: Decodable, Sendable {
+nonisolated struct RequestAccepted: Decodable, Sendable {
     let success: Bool
     let message: String
 }
 
-struct ActiveRequests: Decodable, Sendable {
+nonisolated struct ActiveRequests: Decodable, Sendable {
     let items: [ActiveRequest]
 
     init(from decoder: Decoder) throws {
@@ -677,7 +701,7 @@ struct ActiveRequests: Decodable, Sendable {
     }
 }
 
-struct ActiveRequest: Decodable, Sendable, Identifiable {
+nonisolated struct ActiveRequest: Decodable, Sendable, Identifiable {
     /// L'album, ou l'enregistrement pour une plage demandée seule.
     let musicbrainzId: String
     /// album ou track.
@@ -697,7 +721,7 @@ struct ActiveRequest: Decodable, Sendable, Identifiable {
     var id: String { musicbrainzId }
 }
 
-struct RequestHistory: Decodable, Sendable {
+nonisolated struct RequestHistory: Decodable, Sendable {
     let items: [PastRequest]
 
     init(from decoder: Decoder) throws {
@@ -705,7 +729,7 @@ struct RequestHistory: Decodable, Sendable {
     }
 }
 
-struct PastRequest: Decodable, Sendable, Identifiable {
+nonisolated struct PastRequest: Decodable, Sendable, Identifiable {
     let musicbrainzId: String
     /// album ou track.
     let requestKind: String?
@@ -723,7 +747,7 @@ struct PastRequest: Decodable, Sendable, Identifiable {
     var cover: String? { coverUrl ?? (requestKind == "track" ? nil : DroppedNeedle.cover(nil, album: musicbrainzId)) }
 }
 
-struct WantedList: Decodable, Sendable {
+nonisolated struct WantedList: Decodable, Sendable {
     let items: [WantedItem]
 
     init(from decoder: Decoder) throws {
@@ -731,7 +755,7 @@ struct WantedList: Decodable, Sendable {
     }
 }
 
-struct WantedItem: Decodable, Sendable, Identifiable {
+nonisolated struct WantedItem: Decodable, Sendable, Identifiable {
     let releaseGroupMbid: String
     let artistName: String
     let albumTitle: String
@@ -757,7 +781,7 @@ struct WantedItem: Decodable, Sendable, Identifiable {
 
 /// Un album à ouvrir ou à lire. `musicbrainzId` est l'identifiant qui sert aux routes : celui de la
 /// discothèque pour un album qu'on a, celui de MusicBrainz pour un album du catalogue.
-struct LocalAlbum: Decodable, Sendable, Identifiable, Hashable {
+nonisolated struct LocalAlbum: Decodable, Sendable, Identifiable, Hashable {
     let musicbrainzId: String
     let name: String
     let artistName: String
@@ -810,7 +834,7 @@ struct LocalAlbum: Decodable, Sendable, Identifiable, Hashable {
     }
 }
 
-struct LocalAlbumPage: Decodable, Sendable {
+nonisolated struct LocalAlbumPage: Decodable, Sendable {
     let items: [LocalAlbum]
     let total: Int
     /// Le curseur de la page suivante, nil à la dernière.
@@ -824,7 +848,7 @@ struct LocalAlbumPage: Decodable, Sendable {
     }
 }
 
-struct LocalTrackPage: Decodable, Sendable {
+nonisolated struct LocalTrackPage: Decodable, Sendable {
     let items: [LocalTrack]
     let total: Int
 
@@ -835,7 +859,7 @@ struct LocalTrackPage: Decodable, Sendable {
     }
 }
 
-struct LocalTrack: Decodable, Sendable {
+nonisolated struct LocalTrack: Decodable, Sendable {
     let trackFileId: String
     let title: String
     let trackNumber: Int
@@ -860,7 +884,7 @@ struct LocalTrack: Decodable, Sendable {
     }
 }
 
-struct Crate: Decodable, Sendable {
+nonisolated struct Crate: Decodable, Sendable {
     var items: [CrateTrack]
 
     init(from decoder: Decoder) throws {
@@ -869,7 +893,7 @@ struct Crate: Decodable, Sendable {
 }
 
 /// Une plage de la discothèque, avec la raison de la proposer quand il y en a une.
-struct CrateTrack: Decodable, Sendable, Identifiable {
+nonisolated struct CrateTrack: Decodable, Sendable, Identifiable {
     let trackFileId: String
     let title: String
     let albumName: String
@@ -919,7 +943,7 @@ struct CrateTrack: Decodable, Sendable, Identifiable {
 }
 
 /// La recherche dans la discothèque : `/search` limité à la bibliothèque.
-struct LibrarySearch: Decodable, Sendable {
+nonisolated struct LibrarySearch: Decodable, Sendable {
     let albums: [LocalAlbum]
     let tracks: [CrateTrack]
 
@@ -970,7 +994,7 @@ struct LibrarySearch: Decodable, Sendable {
 
 /// Une piste prête à lire, quelle que soit la route qui l'a fournie.
 /// Codable pour garder les dernières écoutes d'un lancement à l'autre.
-struct Track: Identifiable, Hashable, Sendable, Codable {
+nonisolated struct Track: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let title: String
     let artist: String
@@ -985,12 +1009,12 @@ struct Track: Identifiable, Hashable, Sendable, Codable {
     let format: String?
 }
 
-struct Empty: Decodable, Sendable {}
+nonisolated struct Empty: Decodable, Sendable {}
 
 // MARK: Accueil
 
 /// Une section de l'accueil ou de Discover : la v3 les envoie en liste, chacune avec sa clé et sa forme.
-private struct PageSection: Decodable {
+nonisolated private struct PageSection: Decodable {
     let key: String
     let content: Content
 
@@ -1005,7 +1029,7 @@ private struct PageSection: Decodable {
 }
 
 /// Les sections d'une page, rangées par clé.
-private struct Sections {
+nonisolated private struct Sections {
     private var byKey: [String: PageSection.Content] = [:]
 
     init(_ container: KeyedDecodingContainer<AnyKey>) {
@@ -1020,7 +1044,7 @@ private struct Sections {
     func weekly(_ key: String) -> WeeklyExploration? { byKey[key]?.weekly }
 }
 
-struct Home: Decodable, Sendable {
+nonisolated struct Home: Decodable, Sendable {
     let recentlyPlayed: HomeSection?
     let popularAlbums: HomeSection?
     let trendingArtists: HomeSection?
@@ -1046,13 +1070,13 @@ struct Home: Decodable, Sendable {
 }
 
 /// La playlist hebdomadaire de ListenBrainz, faite pour chacun.
-struct WeeklyExploration: Decodable, Sendable {
+nonisolated struct WeeklyExploration: Decodable, Sendable {
     let title: String
     let playlistDate: String
     let tracks: [WeeklyTrack]
 }
 
-struct WeeklyTrack: Decodable, Sendable {
+nonisolated struct WeeklyTrack: Decodable, Sendable {
     let title: String
     let artistName: String
     let albumName: String
@@ -1061,12 +1085,12 @@ struct WeeklyTrack: Decodable, Sendable {
     let coverUrl: String?
 }
 
-struct Decades: Decodable, Sendable {
+nonisolated struct Decades: Decodable, Sendable {
     let items: [Decade]
 }
 
 /// Les décennies telles que le serveur les donne : sans leurs albums.
-struct DecadeShelves: Decodable, Sendable {
+nonisolated struct DecadeShelves: Decodable, Sendable {
     let items: [Shelf]
 
     struct Shelf: Decodable, Sendable {
@@ -1075,7 +1099,7 @@ struct DecadeShelves: Decodable, Sendable {
     }
 }
 
-struct Decade: Decodable, Sendable, Identifiable {
+nonisolated struct Decade: Decodable, Sendable, Identifiable {
     let decade: Int
     let label: String
     let albums: [LocalAlbum]
@@ -1083,13 +1107,13 @@ struct Decade: Decodable, Sendable, Identifiable {
     var id: Int { decade }
 }
 
-struct Genre: Decodable, Sendable {
+nonisolated struct Genre: Decodable, Sendable {
     let genre: String
     let library: GenreShelf?
     let popular: GenreShelf?
 }
 
-struct GenreShelf: Decodable, Sendable {
+nonisolated struct GenreShelf: Decodable, Sendable {
     let artists: [HomeItem]
     let albums: [HomeItem]
 
@@ -1100,7 +1124,7 @@ struct GenreShelf: Decodable, Sendable {
     }
 }
 
-struct HomeSection: Decodable, Sendable {
+nonisolated struct HomeSection: Decodable, Sendable {
     let title: String
     /// artists, albums, tracks ou genres.
     let type: String
@@ -1127,7 +1151,7 @@ struct HomeSection: Decodable, Sendable {
 
 /// Un artiste, un album, un morceau ou un style de l'accueil : la v3 les distingue par `kind`,
 /// on les lit tous avec des champs facultatifs.
-struct HomeItem: Decodable, Sendable, Identifiable {
+nonisolated struct HomeItem: Decodable, Sendable, Identifiable {
     let name: String
     let mbid: String?
     let artistName: String?
@@ -1182,7 +1206,7 @@ struct HomeItem: Decodable, Sendable, Identifiable {
     }
 }
 
-struct LibraryStats: Decodable, Sendable {
+nonisolated struct LibraryStats: Decodable, Sendable {
     let totalTracks: Int
     let totalAlbums: Int
     let totalArtists: Int
@@ -1199,12 +1223,12 @@ struct LibraryStats: Decodable, Sendable {
 // MARK: Artistes
 
 /// De quoi ouvrir la page d'un artiste.
-struct ArtistRef: Hashable, Sendable {
+nonisolated struct ArtistRef: Hashable, Sendable {
     let id: String
     let name: String
 }
 
-struct Artist: Decodable, Sendable {
+nonisolated struct Artist: Decodable, Sendable {
     let name: String
     let musicbrainzId: String
     let disambiguation: String?
@@ -1263,7 +1287,7 @@ struct Artist: Decodable, Sendable {
     }
 }
 
-struct Release: Decodable, Sendable, Identifiable {
+nonisolated struct Release: Decodable, Sendable, Identifiable {
     let id: String?
     let title: String?
     let type: String?
@@ -1276,24 +1300,24 @@ struct Release: Decodable, Sendable, Identifiable {
     }
 }
 
-struct LifeSpan: Decodable, Sendable {
+nonisolated struct LifeSpan: Decodable, Sendable {
     /// AAAA ou AAAA-MM-JJ.
     let begin: String?
     let end: String?
 }
 
-struct ExternalLink: Decodable, Sendable {
+nonisolated struct ExternalLink: Decodable, Sendable {
     let type: String?
     let url: String
     let label: String?
 }
 
 /// La biographie, à part de la fiche de l'artiste.
-struct ArtistExtended: Decodable, Sendable {
+nonisolated struct ArtistExtended: Decodable, Sendable {
     let description: String?
 }
 
-struct TopAlbums: Decodable, Sendable {
+nonisolated struct TopAlbums: Decodable, Sendable {
     let albums: [TopAlbum]
 
     init(from decoder: Decoder) throws {
@@ -1301,12 +1325,12 @@ struct TopAlbums: Decodable, Sendable {
     }
 }
 
-struct TopAlbum: Decodable, Sendable {
+nonisolated struct TopAlbum: Decodable, Sendable {
     let title: String
     let listenCount: Int?
 }
 
-struct ArtistReleases: Decodable, Sendable {
+nonisolated struct ArtistReleases: Decodable, Sendable {
     let albums: [Release]
     let eps: [Release]
     let singles: [Release]
@@ -1333,7 +1357,7 @@ nonisolated struct AlbumBasic: Decodable, Sendable {
     let albumThumbUrl: String?
 }
 
-struct AlbumInfo: Sendable {
+nonisolated struct AlbumInfo: Sendable {
     let releaseDate: String?
     let type: String?
     let label: String?
@@ -1378,7 +1402,7 @@ nonisolated struct CatalogTrack: Decodable, Sendable, Identifiable {
     var id: String { "\(discNumber ?? 1)-\(position)-\(title)" }
 }
 
-struct TrackRequest: Encodable, Sendable {
+nonisolated struct TrackRequest: Encodable, Sendable {
     let artistName: String
     let trackTitle: String
     let albumTitle: String?
@@ -1401,12 +1425,12 @@ struct TrackRequest: Encodable, Sendable {
     }
 }
 
-struct TrackRequestStatus: Decodable, Sendable {
+nonisolated struct TrackRequestStatus: Decodable, Sendable {
     /// awaiting_approval, queued…
     let status: String
 }
 
-struct TopSongs: Decodable, Sendable {
+nonisolated struct TopSongs: Decodable, Sendable {
     let songs: [TopSong]
 
     init(songs: [TopSong]) { self.songs = songs }
@@ -1416,7 +1440,7 @@ struct TopSongs: Decodable, Sendable {
     }
 }
 
-struct TopSong: Decodable, Sendable {
+nonisolated struct TopSong: Decodable, Sendable {
     let title: String
     let artistName: String
     let recordingMbid: String?
@@ -1427,7 +1451,7 @@ struct TopSong: Decodable, Sendable {
     let listenCount: Int?
 }
 
-struct SimilarArtists: Decodable, Sendable {
+nonisolated struct SimilarArtists: Decodable, Sendable {
     let similarArtists: [SimilarArtist]
 
     init(from decoder: Decoder) throws {
@@ -1435,7 +1459,7 @@ struct SimilarArtists: Decodable, Sendable {
     }
 }
 
-struct SimilarArtist: Decodable, Sendable, Identifiable {
+nonisolated struct SimilarArtist: Decodable, Sendable, Identifiable {
     let musicbrainzId: String
     let name: String
     let imageUrl: String?
@@ -1443,13 +1467,13 @@ struct SimilarArtist: Decodable, Sendable, Identifiable {
     var id: String { musicbrainzId }
 }
 
-struct FollowStatus: Decodable, Sendable {
+nonisolated struct FollowStatus: Decodable, Sendable {
     let followed: Bool
 }
 
 // MARK: Concerts
 
-struct Concerts: Decodable, Sendable {
+nonisolated struct Concerts: Decodable, Sendable {
     /// Faux quand l'admin n'a branché aucune source (Ticketmaster, Skiddle).
     let configured: Bool
     let items: [Concert]
@@ -1466,7 +1490,7 @@ struct Concerts: Decodable, Sendable {
     }
 }
 
-struct Concert: Decodable, Sendable, Identifiable {
+nonisolated struct Concert: Decodable, Sendable, Identifiable {
     let artistMbid: String
     let artistName: String
     let eventName: String
@@ -1485,7 +1509,7 @@ struct Concert: Decodable, Sendable, Identifiable {
 
 // MARK: Présence et scrobbling
 
-struct NowPlayingReport: Encodable, Sendable {
+nonisolated struct NowPlayingReport: Encodable, Sendable {
     let trackName: String
     let artistName: String
     let albumName: String?
@@ -1498,7 +1522,7 @@ struct NowPlayingReport: Encodable, Sendable {
 }
 
 /// Une écoute pour ListenBrainz ou Last.fm, telle que le serveur la relaie.
-struct Listen: Encodable, Sendable {
+nonisolated struct Listen: Encodable, Sendable {
     let trackName: String
     let artistName: String
     let albumName: String
@@ -1510,14 +1534,14 @@ struct Listen: Encodable, Sendable {
 
 // MARK: Réglages du compte
 
-struct Profile: Decodable, Sendable {
+nonisolated struct Profile: Decodable, Sendable {
     let displayName: String
     let avatarUrl: String?
     let username: String?
     let email: String?
 }
 
-struct Connections: Decodable, Sendable {
+nonisolated struct Connections: Decodable, Sendable {
     let connections: [Connection]
 
     init(from decoder: Decoder) throws {
@@ -1525,7 +1549,7 @@ struct Connections: Decodable, Sendable {
     }
 }
 
-struct Connection: Decodable, Sendable, Identifiable {
+nonisolated struct Connection: Decodable, Sendable, Identifiable {
     let service: String
     let enabled: Bool
     let username: String?
@@ -1534,7 +1558,7 @@ struct Connection: Decodable, Sendable, Identifiable {
 }
 
 /// Le scrobbling et ce que les autres voient de ce qu'on écoute.
-struct ListeningPreferences: Codable, Sendable, Equatable {
+nonisolated struct ListeningPreferences: Codable, Sendable, Equatable {
     var scrobbleToLastfm: Bool
     var scrobbleToListenbrainz: Bool
     /// listenbrainz ou lastfm.
@@ -1556,14 +1580,14 @@ struct ListeningPreferences: Codable, Sendable, Equatable {
     }
 }
 
-struct Version: Decodable, Sendable {
+nonisolated struct Version: Decodable, Sendable {
     let version: String
 }
 
 // MARK: JSON brut
 
 /// Une valeur JSON quelconque, pour les formulaires de réglages.
-enum JSON: Codable, Sendable, Equatable {
+nonisolated enum JSON: Codable, Sendable, Equatable {
     case null
     case bool(Bool)
     case number(Double)
@@ -1623,7 +1647,7 @@ enum JSON: Codable, Sendable, Equatable {
 
 // MARK: Paroles
 
-struct Lyrics: Decodable, Sendable {
+nonisolated struct Lyrics: Decodable, Sendable {
     let text: String
     let isSynced: Bool
     let lines: [Line]
@@ -1636,7 +1660,7 @@ struct Lyrics: Decodable, Sendable {
 
 // MARK: Discothèque complète
 
-struct TopAlbumRange: Decodable, Sendable {
+nonisolated struct TopAlbumRange: Decodable, Sendable {
     let items: [HomeItem]
 
     init(from decoder: Decoder) throws {
@@ -1644,7 +1668,7 @@ struct TopAlbumRange: Decodable, Sendable {
     }
 }
 
-struct LibraryTracks: Decodable, Sendable {
+nonisolated struct LibraryTracks: Decodable, Sendable {
     let items: [LibraryTrack]
     let total: Int
     let next: String?
@@ -1657,7 +1681,7 @@ struct LibraryTracks: Decodable, Sendable {
     }
 }
 
-struct LibraryTrack: Decodable, Sendable, Identifiable {
+nonisolated struct LibraryTrack: Decodable, Sendable, Identifiable {
     let id: String
     let title: String
     let albumId: String
@@ -1676,7 +1700,7 @@ struct LibraryTrack: Decodable, Sendable, Identifiable {
     }
 }
 
-struct LibraryArtists: Decodable, Sendable {
+nonisolated struct LibraryArtists: Decodable, Sendable {
     let items: [LibraryArtist]
     let total: Int
     let next: String?
@@ -1689,7 +1713,7 @@ struct LibraryArtists: Decodable, Sendable {
     }
 }
 
-struct LibraryArtist: Decodable, Sendable, Identifiable {
+nonisolated struct LibraryArtist: Decodable, Sendable, Identifiable {
     let id: String
     let name: String
     let musicbrainzArtistId: String?
@@ -1708,7 +1732,7 @@ struct LibraryArtist: Decodable, Sendable, Identifiable {
 
 // MARK: Playlists
 
-struct Playlists: Decodable, Sendable {
+nonisolated struct Playlists: Decodable, Sendable {
     let playlists: [PlaylistSummary]
 
     /// Les playlists privées des autres arrivent masquées, sans nom : on ne les garde pas.
@@ -1717,7 +1741,7 @@ struct Playlists: Decodable, Sendable {
     }
 }
 
-struct PlaylistSummary: Decodable, Sendable, Identifiable, Hashable {
+nonisolated struct PlaylistSummary: Decodable, Sendable, Identifiable, Hashable {
     let id: String
     let name: String
     let trackCount: Int?
@@ -1729,7 +1753,7 @@ struct PlaylistSummary: Decodable, Sendable, Identifiable, Hashable {
     var covers: [String?] { customCoverUrl.map { [$0] } ?? (coverUrls ?? []).map { $0 } }
 }
 
-struct PlaylistDetail: Decodable, Sendable {
+nonisolated struct PlaylistDetail: Decodable, Sendable {
     let id: String
     let name: String
     let tracks: [PlaylistEntry]
@@ -1743,7 +1767,7 @@ struct PlaylistDetail: Decodable, Sendable {
     var isPublic: Bool? = nil
 }
 
-struct PlaylistEntry: Decodable, Sendable, Identifiable {
+nonisolated struct PlaylistEntry: Decodable, Sendable, Identifiable {
     let id: String
     let trackName: String
     let artistName: String
@@ -1768,11 +1792,11 @@ struct PlaylistEntry: Decodable, Sendable, Identifiable {
     }
 }
 
-private struct PlaylistAddition: Encodable, Sendable {
+nonisolated private struct PlaylistAddition: Encodable, Sendable {
     let tracks: [PlaylistTrackInput]
 }
 
-private struct PlaylistTrackInput: Encodable, Sendable {
+nonisolated private struct PlaylistTrackInput: Encodable, Sendable {
     let trackName: String
     let artistName: String
     let albumName: String
@@ -1797,20 +1821,20 @@ private struct PlaylistTrackInput: Encodable, Sendable {
     }
 }
 
-private struct PlaylistMove: Encodable, Sendable {
+nonisolated private struct PlaylistMove: Encodable, Sendable {
     let trackId: String
     let newPosition: Int
 }
 
 // MARK: Classements
 
-enum Chart: String, Sendable {
+nonisolated enum Chart: String, Sendable {
     case popular = "popular/albums"
     case trending = "trending/artists"
     case yourTop = "your-top/albums"
 }
 
-struct ChartPage: Decodable, Sendable {
+nonisolated struct ChartPage: Decodable, Sendable {
     let label: String
     let items: [HomeItem]
     let hasMore: Bool
@@ -1825,11 +1849,11 @@ struct ChartPage: Decodable, Sendable {
 
 // MARK: Spotify
 
-struct SpotifyPlaylists: Decodable, Sendable {
+nonisolated struct SpotifyPlaylists: Decodable, Sendable {
     let playlists: [SpotifyPlaylist]
 }
 
-struct SpotifyPlaylist: Decodable, Sendable, Identifiable {
+nonisolated struct SpotifyPlaylist: Decodable, Sendable, Identifiable {
     let id: String
     let name: String
     let trackCount: Int
@@ -1838,13 +1862,13 @@ struct SpotifyPlaylist: Decodable, Sendable, Identifiable {
     let importedPlaylistId: String?
 }
 
-struct SpotifyImport: Decodable, Sendable {
+nonisolated struct SpotifyImport: Decodable, Sendable {
     let playlistId: String
 }
 
 // MARK: Suivis
 
-struct FollowedArtists: Decodable, Sendable {
+nonisolated struct FollowedArtists: Decodable, Sendable {
     let artists: [FollowedArtist]
 
     init(from decoder: Decoder) throws {
@@ -1852,7 +1876,7 @@ struct FollowedArtists: Decodable, Sendable {
     }
 }
 
-struct FollowedArtist: Decodable, Sendable, Identifiable {
+nonisolated struct FollowedArtist: Decodable, Sendable, Identifiable {
     let mbid: String
     let name: String
     let autoDownload: Bool?
@@ -1869,7 +1893,7 @@ struct FollowedArtist: Decodable, Sendable, Identifiable {
     }
 }
 
-struct NewReleases: Decodable, Sendable {
+nonisolated struct NewReleases: Decodable, Sendable {
     let items: [NewRelease]
     let total: Int
 
@@ -1880,7 +1904,7 @@ struct NewReleases: Decodable, Sendable {
     }
 }
 
-struct NewRelease: Decodable, Sendable, Identifiable {
+nonisolated struct NewRelease: Decodable, Sendable, Identifiable {
     let releaseGroupMbid: String
     let title: String
     let artistName: String
@@ -1898,15 +1922,15 @@ struct NewRelease: Decodable, Sendable, Identifiable {
     }
 }
 
-struct Unseen: Decodable, Sendable {
+nonisolated struct Unseen: Decodable, Sendable {
     let count: Int
 }
 
-struct ConcertCities: Codable, Sendable {
+nonisolated struct ConcertCities: Codable, Sendable {
     let items: [ConcertCity]
 }
 
-struct ConcertCity: Codable, Sendable, Hashable {
+nonisolated struct ConcertCity: Codable, Sendable, Hashable {
     let cityName: String
     let latitude: Double
     let longitude: Double
@@ -1914,11 +1938,11 @@ struct ConcertCity: Codable, Sendable, Hashable {
     let countryCode: String?
 }
 
-struct CitySearch: Decodable, Sendable {
+nonisolated struct CitySearch: Decodable, Sendable {
     let items: [CityResult]
 }
 
-struct CityResult: Decodable, Sendable, Hashable {
+nonisolated struct CityResult: Decodable, Sendable, Hashable {
     let name: String
     let latitude: Double
     let longitude: Double
@@ -1929,7 +1953,7 @@ struct CityResult: Decodable, Sendable, Hashable {
 
 // MARK: Discover
 
-struct Discover: Decodable, Sendable {
+nonisolated struct Discover: Decodable, Sendable {
     let topPicks: TopPicks?
     let dailyMixes: [HomeSection]?
     let radioSections: [HomeSection]?
@@ -1986,7 +2010,7 @@ struct Discover: Decodable, Sendable {
 }
 
 /// Les pochettes d'un genre, s'il en a dans la discothèque.
-struct GenreArtwork: Decodable, Sendable {
+nonisolated struct GenreArtwork: Decodable, Sendable {
     struct Album: Decodable, Sendable {
         let albumId: String
         let coverVersion: Int?
@@ -1999,18 +2023,18 @@ struct GenreArtwork: Decodable, Sendable {
     }
 }
 
-struct IgnoredRelease: Encodable, Sendable {
+nonisolated struct IgnoredRelease: Encodable, Sendable {
     let releaseGroupMbid: String
     let artistMbid: String
     let releaseName: String
     let artistName: String
 }
 
-struct PlaylistSuggestions: Decodable, Sendable {
+nonisolated struct PlaylistSuggestions: Decodable, Sendable {
     let suggestions: HomeSection
 }
 
-struct TopPicks: Decodable, Sendable {
+nonisolated struct TopPicks: Decodable, Sendable {
     let items: [TopPick]
 
     init(from decoder: Decoder) throws {
@@ -2018,7 +2042,7 @@ struct TopPicks: Decodable, Sendable {
     }
 }
 
-struct TopPick: Decodable, Sendable, Identifiable {
+nonisolated struct TopPick: Decodable, Sendable, Identifiable {
     let album: HomeItem
     let matchPct: Int?
     let reasons: [String]?
@@ -2027,7 +2051,7 @@ struct TopPick: Decodable, Sendable, Identifiable {
     var id: String { album.id }
 }
 
-struct BecauseYouListen: Decodable, Sendable, Identifiable {
+nonisolated struct BecauseYouListen: Decodable, Sendable, Identifiable {
     let seedArtist: String
     let seedArtistMbid: String
     let section: HomeSection
@@ -2038,7 +2062,7 @@ struct BecauseYouListen: Decodable, Sendable, Identifiable {
 #if DEBUG
 /// ponytail: la lecture des formes v3, lancée avec `-platineSelfTest YES`. Des réponses écrites d'après
 /// l'OpenAPI du serveur (pas captées en vrai) : elles vérifient surtout les clés snake_case.
-enum V3DecodingCheck {
+nonisolated enum V3DecodingCheck {
     static func run() {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -2099,7 +2123,7 @@ enum V3DecodingCheck {
 }
 #endif
 
-extension Array {
+nonisolated extension Array {
     /// Alterne les groupes (un élément de chacun à tour de rôle), dans l'ordre où ils apparaissent,
     /// avec au plus `cap` éléments par groupe.
     func interleaved(cap: Int = .max, by group: (Element) -> String) -> [Element] {

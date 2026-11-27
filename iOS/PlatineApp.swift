@@ -184,8 +184,9 @@ private struct RootView: View {
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
             }
             #endif
-            try? await Task.sleep(for: .seconds(0.9))
-            withAnimation(.smooth(duration: 0.5)) { launched = true }
+            // Juste le temps d'un tour de disque : l'accueil s'affiche déjà depuis le disque.
+            try? await Task.sleep(for: .seconds(0.25))
+            withAnimation(.smooth(duration: 0.35)) { launched = true }
         }
         .environment(session)
         .environment(player)

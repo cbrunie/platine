@@ -133,7 +133,7 @@ struct TVHome: View {
                 .padding(.horizontal, 80)
             }
             .tvPage()
-            .task {
+            .diskFirstTask {
                 crate = (try? await client.crate().items.map(\.track)) ?? crate
                 recent = (try? await client.recentAlbums()) ?? recent
             }
@@ -211,9 +211,9 @@ struct TVPlaylists: View {
                 }
             }
             .tvPage()
-            .task {
+            .diskFirstTask {
                 playlists = (try? await client.playlists().playlists) ?? playlists
-                loaded = true
+                if !DroppedNeedle.fromDisk || !playlists.isEmpty { loaded = true }
             }
         }
     }
@@ -269,8 +269,8 @@ struct TVAlbumView: View {
 
     var body: some View {
         TVSheet(cover: album.cover, title: album.name, subtitle: album.artistName, tracks: tracks, numbered: true)
-            .task {
-                tracks = ((try? await client.tracks(of: album.musicbrainzId)) ?? []).map { $0.track(in: album) }
+            .diskFirstTask {
+                if let found = try? await client.tracks(of: album.musicbrainzId) { tracks = found.map { $0.track(in: album) } }
             }
     }
 }
@@ -283,7 +283,7 @@ struct TVPlaylistView: View {
 
     var body: some View {
         TVSheet(cover: summary.covers.first ?? nil, title: summary.name, subtitle: summary.ownerName, tracks: tracks)
-            .task { tracks = ((try? await client.playlist(summary.id).tracks) ?? []).compactMap(\.track) }
+            .diskFirstTask { if let found = try? await client.playlist(summary.id).tracks { tracks = found.compactMap(\.track) } }
     }
 }
 

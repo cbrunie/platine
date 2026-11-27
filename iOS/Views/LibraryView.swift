@@ -337,7 +337,12 @@ struct AlbumsView: View {
         .platineBackground()
         .navigationTitle("Albums")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) } }
-        .task { if sections.isEmpty { await load() } }
+        .task {
+            guard sections.isEmpty else { return }
+            // La liste gardée sur l'appareil d'abord, puis le serveur.
+            await DroppedNeedle.$fromDisk.withValue(true) { await load() }
+            await load()
+        }
         .task { await loadListens() }
         .refreshable { await load() }
     }
@@ -357,6 +362,7 @@ struct AlbumsView: View {
             error = nil
         } catch is CancellationError {
         } catch {
+            if DroppedNeedle.fromDisk { return }
             self.error = error.localizedDescription
             if total == nil { total = -1 }
         }
@@ -433,7 +439,11 @@ struct ArtistsView: View {
         .platineBackground()
         .navigationTitle("Artistes")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) } }
-        .task { if sections.isEmpty { await load() } }
+        .task {
+            guard sections.isEmpty else { return }
+            await DroppedNeedle.$fromDisk.withValue(true) { await load() }
+            await load()
+        }
         .task { await loadListens() }
     }
 
@@ -471,7 +481,10 @@ struct ArtistsView: View {
         var artists: [LibraryArtist] = []
         var cursor: String?
         repeat {
-            guard let page = try? await client.libraryArtists(after: cursor) else { break }
+            guard let page = try? await client.libraryArtists(after: cursor) else {
+                if DroppedNeedle.fromDisk { return }
+                break
+            }
             artists += page.items
             total = page.total
             cursor = page.next
@@ -555,7 +568,12 @@ struct TracksView: View {
         .task(id: search) {
             try? await Task.sleep(for: .milliseconds(search.isEmpty ? 0 : 400))
             guard !Task.isCancelled else { return }
-            total = nil
+            if search.isEmpty, sections.isEmpty {
+                // Toutes les plages gardées sur l'appareil d'abord, puis le serveur.
+                await DroppedNeedle.$fromDisk.withValue(true) { await load() }
+            } else {
+                total = nil
+            }
             await load()
         }
     }
@@ -564,7 +582,10 @@ struct TracksView: View {
         var loaded: [Track] = []
         var cursor: String?
         repeat {
-            guard let page = try? await client.libraryTracks(after: cursor, search: search) else { break }
+            guard let page = try? await client.libraryTracks(after: cursor, search: search) else {
+                if DroppedNeedle.fromDisk { return }
+                break
+            }
             guard !Task.isCancelled else { return }
             loaded += page.items.map(\.track)
             cursor = page.next

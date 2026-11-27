@@ -1,4 +1,5 @@
 import CoreImage.CIFilterBuiltins
+import ImageIO
 import Synchronization
 import SwiftUI
 
@@ -12,21 +13,41 @@ struct Cover: View {
     var fills = false
 
     @Environment(\.client) private var client
+    @Environment(\.displayScale) private var scale
     @State private var image: UIImage?
 
+    /// Les pochettes décodées à leur taille d'affichage, par chemin et largeur en pixels.
     private static let cache = NSCache<NSString, UIImage>()
+    /// Les fichiers reçus du serveur, pour ne pas les retélécharger d'un lancement à l'autre.
+    /// ponytail: sans limite de taille, iOS vide Caches quand la place manque ; une purge LRU si ça gêne.
+    nonisolated static let folder = URL.cachesDirectory.appending(path: "covers")
 
-    /// Une pochette depuis le cache ou le serveur : partagée avec l'écran verrouillé.
-    static func load(_ path: String, client: DroppedNeedle) async -> UIImage? {
-        if let cached = cache.object(forKey: path as NSString) { return cached }
+    /// La largeur en pixels à décoder, arrondie pour partager les tailles voisines.
+    /// Sans taille, une pleine largeur d'écran suffit.
+    private var pixels: Int {
+        let points = size ?? 400
+        return min(Int((points * scale / 128).rounded(.up)) * 128, 1536)
+    }
+
+    private static func key(_ path: String, _ pixels: Int) -> NSString { "\(path)#\(pixels)" as NSString }
+
+    /// Une pochette depuis la mémoire, le disque ou le serveur, décodée hors du fil principal.
+    /// `pixels` à 0 : la taille d'origine (écran verrouillé, CarPlay, teinte de l'album).
+    static func load(_ path: String, client: DroppedNeedle, pixels: Int = 0) async -> UIImage? {
+        if let cached = cache.object(forKey: key(path, pixels)) { return cached }
+        let file = folder.appending(path: DroppedNeedle.fileName(path))
+        if let image = await decode(file: file, pixels: pixels) {
+            cache.setObject(image, forKey: key(path, pixels))
+            return image
+        }
         // 202 sans contenu : le serveur va chercher la pochette, elle arrive quelques secondes après.
         // Un réseau qui lâche ou un 429 se retentent aussi ; le reste (404…) est définitif.
         for delay in [1, 2, 3, 5, 8] {
             do {
                 let data = try await client.image(path)
                 if !data.isEmpty {
-                    guard let image = UIImage(data: data) else { return nil }
-                    cache.setObject(image, forKey: path as NSString)
+                    guard let image = await decode(data, pixels: pixels, saveTo: file) else { return nil }
+                    cache.setObject(image, forKey: key(path, pixels))
                     return image
                 }
             } catch let DroppedNeedle.Failure.status(code, _) where code != 429 && code < 500 {
@@ -36,6 +57,31 @@ struct Cover: View {
             if Task.isCancelled { return nil }
         }
         return nil
+    }
+
+    @concurrent
+    private static func decode(file: URL, pixels: Int) async -> UIImage? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        return await decode(data, pixels: pixels, saveTo: nil)
+    }
+
+    /// Réduit et décode l'image tout de suite, pour que le défilement n'ait plus qu'à l'afficher.
+    @concurrent
+    private static func decode(_ data: Data, pixels: Int, saveTo file: URL?) async -> UIImage? {
+        if let file {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try? data.write(to: file, options: .atomic)
+        }
+        guard pixels > 0 else { return await UIImage(data: data)?.byPreparingForDisplay() }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceShouldCacheImmediately: true,
+                  kCGImageSourceThumbnailMaxPixelSize: pixels,
+              ] as CFDictionary)
+        else { return nil }
+        return UIImage(cgImage: thumbnail)
     }
 
     private static let context = CIContext()
@@ -62,7 +108,8 @@ struct Cover: View {
             }
         }
             .overlay(alignment: .top) {
-                if let image {
+                // Déjà décodée : affichée dès la première image, sans passer par l'icône.
+                if let image = image ?? path.flatMap({ Self.cache.object(forKey: Self.key($0, pixels)) }) {
                     Image(uiImage: image).resizable().scaledToFill()
                 } else {
                     Image(systemName: "opticaldisc").font(.title2).foregroundStyle(.secondary)
@@ -73,7 +120,7 @@ struct Cover: View {
             .task(id: path) {
                 image = nil
                 guard let path else { return }
-                image = await Self.load(path, client: client)
+                image = await Self.load(path, client: client, pixels: pixels)
             }
     }
 }
@@ -84,6 +131,7 @@ struct Cover: View {
 extension Cover {
     static func check() {
         URLProtocol.registerClass(CoverStub.self)
+        try? FileManager.default.removeItem(at: folder)
         Task {
             let client = DroppedNeedle(server: URL(string: "https://stub.platine")!)
             let pending = await load("https://stub.platine/pending", client: client)

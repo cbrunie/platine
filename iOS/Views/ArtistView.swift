@@ -116,7 +116,8 @@ struct ArtistView: View {
                 }
             }
         }
-        .task { await load() }
+        // La page gardée sur l'appareil d'abord, puis le serveur.
+        .task { await DroppedNeedle.$fromDisk.withValue(true) { await load() }; await load() }
     }
 
     private var artistImage: String {
@@ -359,34 +360,49 @@ struct ArtistView: View {
         thisIs = await incontournables()
     }
 
+    // Au passage depuis le disque, une réponse jamais reçue ne change rien : le serveur viendra ensuite.
     private func loadInfo() async {
-        info = try? await client.artist(artist.id)
+        let found = try? await client.artist(artist.id)
+        if found == nil, DroppedNeedle.fromDisk { return }
+        info = found
         followed = info?.followed ?? false
         infoLoaded = true
     }
 
     private func loadSimilar() async {
-        similar = (try? await client.similarArtists(to: artist.id))?.similarArtists ?? []
+        let found = (try? await client.similarArtists(to: artist.id))?.similarArtists
+        if found == nil, DroppedNeedle.fromDisk { return }
+        similar = found ?? []
     }
 
     private func loadConcerts() async {
-        concerts = try? await client.concerts()
+        let found = try? await client.concerts()
+        if found == nil, DroppedNeedle.fromDisk { return }
+        concerts = found
     }
 
     private func loadBio() async {
-        bio = .some((try? await client.extended(artist.id))?.description)
+        let found = try? await client.extended(artist.id)
+        if found == nil, DroppedNeedle.fromDisk { return }
+        bio = .some(found?.description)
     }
 
     private func loadTopAlbum() async {
-        topAlbum = (try? await client.topAlbums(of: artist.id))?.albums.first
+        let found = try? await client.topAlbums(of: artist.id)
+        if found == nil, DroppedNeedle.fromDisk { return }
+        topAlbum = found?.albums.first
     }
 
     private func loadSongs() async {
-        topSongs = (try? await client.topSongs(of: artist.id))?.songs ?? []
+        let found = try? await client.topSongs(of: artist.id)
+        if found == nil, DroppedNeedle.fromDisk { return }
+        topSongs = found?.songs ?? []
     }
 
     private func loadReleases() async {
-        discography = (try? await client.releases(of: artist.id)).map(Discography.init) ?? Discography()
+        let found = try? await client.releases(of: artist.id)
+        if found == nil, DroppedNeedle.fromDisk { return }
+        discography = found.map(Discography.init) ?? Discography()
     }
 
     /// Les disques de l'artiste qu'on a en local.

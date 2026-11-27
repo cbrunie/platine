@@ -32,7 +32,10 @@ final class Player {
 
     /// Répéter rien, toute la pile, ou le morceau en cours.
     var repeatMode: Repeat = Repeat(rawValue: UserDefaults.standard.string(forKey: "repeat") ?? "") ?? .off {
-        didSet { UserDefaults.standard.set(repeatMode.rawValue, forKey: "repeat") }
+        didSet {
+            UserDefaults.standard.set(repeatMode.rawValue, forKey: "repeat")
+            preloadNext()
+        }
     }
 
     /// Le volume de l'app ; celui du système passe par `VolumeBar`.
@@ -41,7 +44,11 @@ final class Player {
     var current: Track? { queue.indices.contains(index) ? queue[index] : nil }
     var upcoming: ArraySlice<Track> { queue.isEmpty ? [] : queue[(index + 1)...] }
 
-    @ObservationIgnored private let player = AVPlayer()
+    /// Le morceau en cours, et derrière lui le suivant déjà préparé : il démarre sans blanc.
+    @ObservationIgnored private let player = AVQueuePlayer()
+    @ObservationIgnored private var preloaded: (id: String, item: AVPlayerItem)?
+    /// Le flux du morceau en cours : en panne, la file le retire aussitôt, on le reconnaît par là.
+    @ObservationIgnored private var streaming: ObjectIdentifier?
     @ObservationIgnored private var client: DroppedNeedle?
     @ObservationIgnored private var artwork: MPMediaItemArtwork?
     @ObservationIgnored private var status: NSKeyValueObservation?
@@ -212,22 +219,26 @@ final class Player {
     /// Les positions sont celles de `upcoming`, comme dans la liste « À suivre ».
     func removeUpcoming(at offsets: IndexSet) {
         queue.remove(atOffsets: IndexSet(offsets.map { $0 + index + 1 }))
+        preloadNext()
     }
 
     func moveUpcoming(from offsets: IndexSet, to destination: Int) {
         queue.move(fromOffsets: IndexSet(offsets.map { $0 + index + 1 }), toOffset: destination + index + 1)
+        preloadNext()
     }
 
     /// « À la fin de la pile ».
     func enqueue(_ tracks: [Track], using client: DroppedNeedle) {
         guard current != nil else { return play(tracks, using: client) }
         queue += tracks
+        preloadNext()
     }
 
     /// « Lire ensuite » : juste après le morceau en cours.
     func playNext(_ tracks: [Track], using client: DroppedNeedle) {
         guard current != nil else { return play(tracks, using: client) }
         queue.insert(contentsOf: tracks, at: index + 1)
+        preloadNext()
     }
 
     /// La file ne se vide jamais : quand elle s'épuise, on puise dans le bac.
@@ -239,12 +250,14 @@ final class Player {
             guard let crate = try? await client.crate() else { return }
             let known = Set(queue.map(\.id))
             queue += crate.items.map(\.track).filter { !known.contains($0.id) }
+            preloadNext()
         }
     }
 
     func shuffleUpcoming() {
         guard index + 1 < queue.count else { return }
         queue[(index + 1)...].shuffle()
+        preloadNext()
     }
 
     func stop() {
@@ -253,7 +266,8 @@ final class Player {
         presence?.cancel()
         if reported, let client { Task { try? await client.clearNowPlaying() } }
         reported = false
-        player.replaceCurrentItem(with: nil)
+        player.removeAllItems()
+        preloaded = nil
         queue = []
         isPlaying = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -294,17 +308,54 @@ final class Player {
     }
 
     private func startStream(of track: Track, using client: DroppedNeedle) {
-        var url = client.streamURL(track.id)
-        #if DEBUG
-        if debugBadStreams > 0, let refused = URL(string: "http://127.0.0.1:9/") {
-            debugBadStreams -= 1
-            url = refused
+        let item: AVPlayerItem
+        if let preloaded, preloaded.id == track.id, player.items().contains(preloaded.item) {
+            // Déjà derrière le morceau en cours (ou déjà passé devant, à la fin naturelle).
+            item = preloaded.item
+            if player.currentItem !== item { player.advanceToNextItem() }
+        } else {
+            item = Self.item(for: track, using: client)
+            #if DEBUG
+            if debugBadStreams > 0, let refused = URL(string: "http://127.0.0.1:9/") {
+                debugBadStreams -= 1
+                player.removeAllItems()
+                player.insert(AVPlayerItem(url: refused), after: nil)
+                return observe(player.currentItem!)
+            }
+            #endif
+            player.removeAllItems()
+            player.insert(item, after: nil)
         }
-        #endif
+        self.preloaded = nil
+        observe(item)
+        preloadNext()
+    }
+
+    private static func item(for track: Track, using client: DroppedNeedle) -> AVPlayerItem {
         // ponytail: clé AVURLAsset non documentée mais répandue ; un AVAssetResourceLoader si Apple la retire.
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": client.authHeaders])
-        let item = AVPlayerItem(asset: asset)
-        status = item.observe(\.status) { [weak self] item, _ in
+        let asset = AVURLAsset(url: client.streamURL(track.id), options: ["AVURLAssetHTTPHeaderFieldsKey": client.authHeaders])
+        return AVPlayerItem(asset: asset)
+    }
+
+    /// Prépare derrière le morceau en cours celui qui suivra (le même, en répétition d'un seul).
+    /// À rappeler quand la file change : un morceau préparé qui n'est plus le bon serait joué.
+    private func preloadNext() {
+        guard let current = player.currentItem, let client else { return }
+        for item in player.items() where item !== current { player.remove(item) }
+        preloaded = nil
+        let next = repeatMode == .one ? index : repeatMode == .all && index + 1 >= queue.count ? 0 : index + 1
+        if queue.indices.contains(next) {
+            let item = Self.item(for: queue[next], using: client)
+            player.insert(item, after: current)
+            preloaded = (queue[next].id, item)
+        }
+        // Sans suivant, le lecteur s'arrête sur la fin du morceau au lieu de se vider.
+        player.actionAtItemEnd = preloaded == nil ? .pause : .advance
+    }
+
+    private func observe(_ item: AVPlayerItem) {
+        streaming = ObjectIdentifier(item)
+        status = item.observe(\.status, options: [.initial]) { [weak self] item, _ in
             if item.status == .readyToPlay {
                 Task { @MainActor in
                     guard let self, let position = self.pendingPosition else { return }
@@ -320,7 +371,6 @@ final class Player {
             let id = ObjectIdentifier(item)
             Task { @MainActor in self?.fail(message, transient: transient, item: id) }
         }
-        player.replaceCurrentItem(with: item)
     }
 
     /// Une panne de réseau passagère, pas un fichier absent ou illisible. AVFoundation met parfois
@@ -340,8 +390,10 @@ final class Player {
     private func finished() {
         switch repeatMode {
         case .one:
+            // Le lecteur est déjà passé sur la copie préparée du même morceau.
             seek(to: 0)
             resume()
+            preloadNext()
         case .all where index + 1 >= queue.count:
             jump(to: 0)
         default:
@@ -353,8 +405,11 @@ final class Player {
     /// au même endroit avant de parler d'erreur.
     private func fail(_ message: String?, transient: Bool, item: ObjectIdentifier?) {
         // Une panne d'un morceau déjà remplacé ne concerne plus personne.
-        guard item == player.currentItem.map(ObjectIdentifier.init) else { return }
+        guard item == streaming else { return }
         guard retryTask == nil else { return }
+        // La file a déjà retiré le flux en panne : le morceau préparé derrière ne doit pas partir à sa place.
+        player.removeAllItems()
+        preloaded = nil
         if transient, retries < 3, let track = current, let client {
             retries += 1
             let position = pendingPosition ?? elapsed

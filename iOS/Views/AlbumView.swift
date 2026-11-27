@@ -176,6 +176,8 @@ struct AlbumView: View {
             }
         }
         .task {
+            // Les plages gardées sur l'appareil d'abord, puis le serveur.
+            await DroppedNeedle.$fromDisk.withValue(true) { try? await loadTracks() }
             do {
                 try await loadTracks()
             } catch {

@@ -313,6 +313,16 @@ struct Loaded<Value, Content: View>: View {
     }
 
     private func reload() async {
-        do { result = .success(try await load()) } catch { result = .failure(error) }
+        // D'abord la dernière réponse gardée sur l'appareil, affichée aussitôt ; puis le serveur.
+        if result == nil, let saved = try? await DroppedNeedle.$fromDisk.withValue(true, operation: { try await load() }) {
+            result = .success(saved)
+        }
+        do {
+            result = .success(try await load())
+        } catch {
+            // Hors ligne, la page gardée reste plutôt que l'erreur.
+            if case .success = result { return }
+            result = .failure(error)
+        }
     }
 }
