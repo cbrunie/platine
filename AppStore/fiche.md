@@ -135,10 +135,10 @@ Platine is a native client for DroppedNeedle, an open-source self-hosted music s
 To review the app, use our demo server:
 1. On the login screen, replace the "Server" field with:
    https://diffusion.tail1c4018.ts.net:10000
-2. Enter the username and password provided in the Sign-In Information above.
-3. Tap "Poser l'aiguille" (Sign in).
+2. Either tap "Se connecter avec le navigateur" (Sign in with browser): the server's web page opens, sign in with the username and password provided in the Sign-In Information above, then tap Allow.
+   Or tap "Utiliser un identifiant et un mot de passe" (Use a username and password), enter the same credentials and tap "Poser l'aiguille" (Sign in).
 
-Apple TV: the same server URL and credentials work on the tvOS login screen.
+Apple TV: the same server URL and credentials work on the tvOS login screen (username and password; tvOS has no browser).
 CarPlay: once signed in on iPhone, the CarPlay app shows three tabs (crate, recent albums, playlists) and the Now Playing screen.
 Siri / Shortcuts: "Lire le bac" (play crate), pause, resume, next track, via App Shortcuts.
 

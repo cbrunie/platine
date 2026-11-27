@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import Security
@@ -47,11 +48,59 @@ final class Session {
         }
         let auth = try await DroppedNeedle(server: url).login(username: username, password: password)
         guard let token = auth.token else { throw DroppedNeedle.Failure.status(0, "Le serveur n'a pas renvoyé de jeton.") }
+        signIn(url, token: token)
+        user = auth.user
+    }
+
+    private func signIn(_ url: URL, token: String) {
         UserDefaults.standard.set(url.absoluteString, forKey: "server")
         Keychain.token = token
         client = DroppedNeedle(server: url, token: token)
-        user = auth.user
     }
+
+    #if !os(tvOS)
+    /// Connexion par le navigateur (App Connect) : le mot de passe ne passe pas par l'app, et le serveur
+    /// donne à cet appareil sa propre session, qu'on retire dans Profil › Sessions.
+    /// `authenticate` ouvre la page du serveur et rend l'adresse de retour.
+    func connect(device: String, authenticate: (URL) async throws -> URL) async throws {
+        guard let url = URL(string: server.trimmingCharacters(in: .whitespaces)), url.host() != nil else {
+            throw URLError(.badURL)
+        }
+        let api = DroppedNeedle(server: url)
+        let verifier = Self.randomToken()
+        let state = Self.randomToken()
+        let challenge = Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+        guard let page = api.appConnectURL(challenge: challenge, state: state, device: device) else { throw URLError(.badURL) }
+        let back = URLComponents(url: try await authenticate(page), resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func item(_ name: String) -> String? { back.first { $0.name == name }?.value }
+        guard item("state") == state else { throw Self.connectFailure("La réponse ne correspond pas à cette demande. Réessaie.") }
+        if item("error") == "access_denied" { throw CancellationError() }
+        guard let code = item("code") else { throw Self.connectFailure("Le serveur a refusé la demande (\(item("error") ?? "sans code")).") }
+        let token: AppConnectToken
+        do {
+            token = try await api.appConnectToken(code: code, verifier: verifier)
+        } catch DroppedNeedle.Failure.status(_, "invalid_client") {
+            throw Self.connectFailure("Platine n'est pas autorisée sur ce serveur : l'admin l'ajoute dans Réglages › Applis connectées.")
+        }
+        guard token.credentialKind == "device_session" else {
+            throw Self.connectFailure("Le serveur donne à Platine un mot de passe Subsonic : l'admin doit choisir « Device session » pour elle.")
+        }
+        signIn(url, token: token.accessToken)
+    }
+
+    private static func connectFailure(_ message: String) -> Error { DroppedNeedle.Failure.status(0, message) }
+
+    /// 32 octets aléatoires en base64url : 43 caractères, comme le veut PKCE.
+    private static func randomToken() -> String {
+        var generator = SystemRandomNumberGenerator()
+        return base64URL(Data((0 ..< 32).map { _ in UInt8.random(in: .min ... .max, using: &generator) }))
+    }
+
+    private static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+    #endif
 
     func refreshUser() async {
         if let me = try? await client?.me() { user = me }

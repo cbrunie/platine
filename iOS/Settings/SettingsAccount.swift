@@ -321,6 +321,8 @@ struct ConnectAppsView: View {
     @State private var everyone: [JSON] = []
     /// Les playlists publiques des autres, montrées ou non dans mes applis.
     @State private var publicPlaylists: Bool?
+    /// Platine est-elle autorisée à se connecter par le navigateur ? `nil` tant qu'on ne sait pas.
+    @State private var platineAllowed: Bool?
     @State private var newName = ""
     @State private var naming = false
     @State private var alert: ServerAlert?
@@ -337,6 +339,21 @@ struct ConnectAppsView: View {
                 Text("Adresses à saisir dans les applis")
             }
             .settingsRow()
+
+            if session.isAdmin, let platineAllowed {
+                Section {
+                    if platineAllowed {
+                        Label("Platine peut se connecter par le navigateur", systemImage: "checkmark.circle.fill")
+                    } else {
+                        Button("Autoriser la connexion de Platine", systemImage: "iphone.badge.checkmark", action: allowPlatine)
+                    }
+                } header: {
+                    Text("Connexion par le navigateur")
+                } footer: {
+                    Text("On se connecte sur la page du serveur et Platine reçoit sa propre session, sans jamais voir le mot de passe. Chaque appareil apparaît dans Profil › Sessions.")
+                }
+                .settingsRow()
+            }
 
             if let publicPlaylists {
                 Section {
@@ -393,6 +410,35 @@ struct ConnectAppsView: View {
         publicPlaylists = (try? await client.json("GET", "/me/connect-apps"))?["include_public_playlists"]?.bool
         if session.isAdmin {
             everyone = (try? await client.json("GET", "/admin/app-passwords"))?["app_passwords"]?.array ?? []
+            platineAllowed = (try? await client.json("GET", "/settings/app-connect")).map { settings in
+                (settings["clients"]?.array ?? []).contains { Self.isPlatine($0) }
+            }
+        }
+    }
+
+    /// Platine, enregistrée pour l'API de DroppedNeedle avec sa bonne adresse de retour.
+    private static func isPlatine(_ app: JSON) -> Bool {
+        app["client_id"]?.string == DroppedNeedle.appConnectClient && app["credential_kind"]?.string == "device_session"
+            && (app["redirect_uris"]?.array ?? []).contains { $0.string == DroppedNeedle.appConnectReturn }
+    }
+
+    /// Ajoute Platine aux applis qui se connectent par le navigateur, sans toucher aux autres.
+    private func allowPlatine() {
+        Task {
+            do {
+                let settings = try await client.json("GET", "/settings/app-connect")
+                let others = (settings["clients"]?.array ?? []).filter { $0["client_id"]?.string != DroppedNeedle.appConnectClient }
+                let platine: JSON = .object([
+                    "client_id": .string(DroppedNeedle.appConnectClient),
+                    "name": .string("Platine"),
+                    "credential_kind": .string("device_session"),
+                    "redirect_uris": .array([.string(DroppedNeedle.appConnectReturn)]),
+                ])
+                _ = try await client.json("PUT", "/settings/app-connect", body: .object(["clients": .array(others + [platine])]))
+                await load()
+            } catch {
+                alert = ServerAlert(title: "Autorisation impossible", message: error.localizedDescription)
+            }
         }
     }
 

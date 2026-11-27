@@ -1,3 +1,6 @@
+#if !os(tvOS)
+import AuthenticationServices
+#endif
 import SwiftUI
 
 /// La connexion, aux couleurs de DroppedNeedle : le grand disque du lecteur
@@ -9,6 +12,14 @@ struct LoginView: View {
     @State private var working = false
     @State private var error: String?
     @FocusState private var focus: Field?
+    /// Le mot de passe n'est qu'un recours : on se connecte d'abord par le navigateur (App Connect).
+    @State private var usesPassword = false
+    #if os(tvOS)
+    private let showsPassword = true
+    #else
+    @Environment(\.webAuthenticationSession) private var webAuthentication
+    private var showsPassword: Bool { usesPassword }
+    #endif
 
     private enum Field { case server, username, password }
 
@@ -33,9 +44,10 @@ struct LoginView: View {
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .focused($focus, equals: .server)
-                                .submitLabel(.next)
-                                .onSubmit { focus = .username }
+                                .submitLabel(showsPassword ? .next : .go)
+                                .onSubmit { if showsPassword { focus = .username } else { connectInBrowser() } }
                         }
+                        if showsPassword {
                         separator
                         field("person.fill") {
                             TextField("Identifiant", text: $username)
@@ -54,6 +66,7 @@ struct LoginView: View {
                                 .submitLabel(.go)
                                 .onSubmit(signIn)
                         }
+                        }
                     }
                     #if !os(tvOS)
                     // Sur Apple TV, les champs ont déjà leur propre fond sous le focus.
@@ -67,9 +80,13 @@ struct LoginView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    Button(action: signIn) {
+                    Button(action: submit) {
                         Group {
-                            if working { ProgressView().tint(Color.base100) } else { Text("Poser l'aiguille").font(.headline) }
+                            if working {
+                                ProgressView().tint(Color.base100)
+                            } else {
+                                Text(showsPassword ? "Poser l'aiguille" : "Se connecter avec le navigateur").font(.headline)
+                            }
                         }
                         .frame(maxWidth: .infinity, minHeight: 30)
                     }
@@ -80,6 +97,16 @@ struct LoginView: View {
                     // Toujours en sauge, lisible : grisé, le verre rendait le texte illisible (surtout sur Mac).
                     // `signIn` ignore déjà un formulaire incomplet.
                     .disabled(working)
+
+                    #if !os(tvOS)
+                    Button(usesPassword ? "Se connecter avec le navigateur" : "Utiliser un identifiant et un mot de passe") {
+                        withAnimation { usesPassword.toggle() }
+                        error = nil
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .disabled(working)
+                    #endif
                 }
                 .padding(.horizontal, 24)
                 .frame(maxWidth: 520)
@@ -121,6 +148,34 @@ struct LoginView: View {
         #if !os(tvOS)
         Rectangle().fill(.white.opacity(0.08)).frame(height: 0.5).padding(.leading, 54)
         #endif
+    }
+
+    #if !os(tvOS)
+    /// La page du serveur s'ouvre dans le navigateur du système : on s'y connecte, on autorise
+    /// Platine, et le serveur la rappelle avec une session pour cet appareil.
+    private func connectInBrowser() {
+        working = true
+        error = nil
+        Task {
+            do {
+                try await session.connect(device: UIDevice.current.name) { page in
+                    try await webAuthentication.authenticate(using: page, callback: .customScheme(DroppedNeedle.appConnectScheme),
+                                                             preferredBrowserSession: .shared, additionalHeaderFields: [:])
+                }
+            } catch is CancellationError {
+            } catch let failure as ASWebAuthenticationSessionError where failure.code == .canceledLogin {
+            } catch {
+                self.error = error.localizedDescription
+            }
+            working = false
+        }
+    }
+    #else
+    private func connectInBrowser() {}
+    #endif
+
+    private func submit() {
+        if showsPassword { signIn() } else { connectInBrowser() }
     }
 
     private func signIn() {
