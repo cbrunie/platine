@@ -250,7 +250,7 @@ struct GenreView: View {
                 .padding(.vertical)
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle(name.capitalized)
     }
 
@@ -331,7 +331,7 @@ struct WeeklyView: View {
             }
         }
         .listStyle(.plain)
-        .platineBackground()
+        .pageBackground()
         .navigationTitle(weekly.title)
     }
 
@@ -397,7 +397,7 @@ struct DiscoverSectionView: View {
             }
             .padding()
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle(section.title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -431,7 +431,7 @@ struct PlaylistDiscoveryView: View {
                 .listStyle(.plain)
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Pioche pour une playlist")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -446,7 +446,7 @@ private struct PlaylistPicksView: View {
         Loaded(load: { try await client.suggestions(for: playlist.id).suggestions }) { section in
             DiscoverSectionView(section: HomeSection(title: "D'après \(playlist.name)", type: section.type, items: section.items))
         }
-        .platineBackground()
+        .pageBackground()
     }
 }
 

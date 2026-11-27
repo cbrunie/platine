@@ -54,7 +54,7 @@ struct ChartView: View {
             if loading, items.isEmpty { SkeletonList() }
             else if !loading, items.isEmpty { ContentUnavailableView("Rien sur cette période", systemImage: "chart.bar") }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: range) {
@@ -119,7 +119,7 @@ struct SpotifyImportView: View {
                 ContentUnavailableView("Aucune playlist Spotify", systemImage: "music.note.list")
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Depuis Spotify")
         .task { await load() }
         .refreshable { await load() }
@@ -229,7 +229,7 @@ struct FollowingView: View {
             .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Suivis")
         .navigationDestination(isPresented: $showsConcerts) { ConcertsView() }
         .navigationDestination(isPresented: $showsCities) { CitiesView() }
@@ -366,7 +366,7 @@ private struct CitySearchSheet: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
-            .platineBackground()
+            .pageBackground()
             .navigationTitle("Ajouter une ville")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } } }

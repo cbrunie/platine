@@ -34,7 +34,7 @@ struct LibraryView: View {
                 }
                 .padding(.vertical)
             }
-            .platineBackground()
+            .pageBackground()
             .navigationTitle("Discothèque")
             .platineDestinations()
             .toolbar {
@@ -334,7 +334,7 @@ struct AlbumsView: View {
                 ContentUnavailableView("Aucun disque dans les bacs", systemImage: "music.note.house")
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Albums")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) } }
         .task {
@@ -436,7 +436,7 @@ struct ArtistsView: View {
                 }
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Artistes")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) } }
         .task {
@@ -562,7 +562,7 @@ struct TracksView: View {
             }
         }
         .overlay { if total == 0 { ContentUnavailableView.search(text: search) } }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Morceaux")
         .searchable(text: $search, prompt: "Chercher une plage")
         .task(id: search) {
@@ -632,7 +632,7 @@ struct PlaylistsView: View {
             }
             .padding()
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Playlists")
         .toolbar {
             // Un symbole système : la barre d'outils du Mac affiche les images à leur taille d'origine.
@@ -727,7 +727,7 @@ struct PlaylistView: View {
             if let detail, !detail.tracks.isEmpty { notes(detail) }
         }
         .listStyle(.plain)
-        .platineBackground()
+        .pageBackground()
         .navigationBarTitleDisplayMode(.inline)
         .heroBar(title: detail?.name ?? summary.name)
         .toolbar {
@@ -945,7 +945,7 @@ struct RecentAlbumsView: View {
             }
             .padding()
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Récemment ajoutés")
         .task { albums = (try? await client.recentAlbums()) ?? [] }
     }

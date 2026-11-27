@@ -99,7 +99,7 @@ struct ArtistView: View {
         }
         .defaultScrollAnchor(DebugScreen.anchor)
         .ignoresSafeArea(edges: .top)
-        .platineBackground()
+        .pageBackground()
         .navigationBarTitleDisplayMode(.inline)
         .heroBar(title: artist.name)
         .toolbar {
@@ -531,7 +531,7 @@ struct ThisIsView: View {
             }
         }
         .listStyle(.plain)
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("This Is \(artist.name)")
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -105,7 +105,7 @@ struct TVTrackList: View {
 extension View {
     /// La page d'un onglet : fond DroppedNeedle et fiches d'albums et de playlists.
     func tvPage() -> some View {
-        platineBackground()
+        pageBackground()
             .navigationDestination(for: LocalAlbum.self) { TVAlbumView(album: $0) }
             .navigationDestination(for: PlaylistSummary.self) { TVPlaylistView(summary: $0) }
     }
@@ -316,7 +316,7 @@ private struct TVSheet: View {
             TVTrackList(tracks: tracks, numbered: numbered)
         }
         .padding(.horizontal, 80)
-        .platineBackground()
+        .pageBackground()
     }
 
     private func play(_ tracks: [Track]) {

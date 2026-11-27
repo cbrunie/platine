@@ -30,7 +30,7 @@ struct DiscoverView: View {
                 .listStyle(.plain)
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Découvrir")
     }
 }

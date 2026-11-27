@@ -118,7 +118,7 @@ private struct MixesPreview: View {
             }
             .padding()
         }
-        .platineBackground()
+        .pageBackground()
         .task {
             async let found = try? client.discover().dailyMixes
             async let years = try? client.decades().items

@@ -38,7 +38,7 @@ struct DownloadsView: View {
                 ContentUnavailableView(Self.empty(filter), systemImage: "arrow.down.circle")
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Téléchargements")
         .toolbar {
             Menu {
@@ -361,7 +361,7 @@ struct RadioView: View {
                 ContentUnavailableView("Rien de semblable dans les bacs", systemImage: "dot.radiowaves.left.and.right")
             }
         }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Radio \(title)")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showsRequests) { RequestsView() }

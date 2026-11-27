@@ -94,7 +94,7 @@ struct HomeView: View {
                 }
             }
                 .defaultScrollAnchor(DebugScreen.anchor)
-            .platineBackground()
+            .pageBackground()
             #if targetEnvironment(macCatalyst)
             // Sur Mac, le bonjour défile avec la page : la barre de l'accueil ne se voit plus. Sans elle,
             // macOS mettrait la sienne ; les pages poussées gardent leur titre.

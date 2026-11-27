@@ -100,7 +100,7 @@ struct SearchView: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
-            .platineBackground()
+            .pageBackground()
             .navigationTitle("Rechercher")
             .platineDestinations()
             .searchable(text: $text, prompt: "Un disque, un artiste, une plage…")

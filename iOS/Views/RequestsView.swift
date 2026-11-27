@@ -58,7 +58,7 @@ struct RequestsView: View {
         }
         .listStyle(.plain)
         .overlay { placeholder }
-        .platineBackground()
+        .pageBackground()
         .navigationTitle("Demandes")
         .task {
             // Tenir la progression à jour tant que la page est ouverte.
