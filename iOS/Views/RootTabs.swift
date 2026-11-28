@@ -73,9 +73,6 @@ struct RootTabs: View {
                     sidebarTab("Albums", "square.stack", "albums") { stacked { AlbumsView() } }
                     sidebarTab("Morceaux", "music.note", "tracks") { stacked { TracksView() } }
                     sidebarTab("Playlists", "music.note.list", "playlists") { stacked { PlaylistsView() } }
-                    if session.isAdmin {
-                        sidebarTab("Contrôles", "slider.horizontal.3", "controls") { stacked { LibraryControlsView() } }
-                    }
                 }
                 .defaultVisibility(.hidden, for: .tabBar)
                 .customizationBehavior(.disabled, for: .automatic, .sidebar, .tabBar)
@@ -96,6 +93,7 @@ struct RootTabs: View {
                 footerTab("following") { stacked { FollowingView() } }
                 footerTab("requests") { stacked { RequestsView() } }
                 footerTab("downloads") { stacked { DownloadsView() } }
+                if session.isAdmin { footerTab("controls") { stacked { LibraryControlsView() } } }
                 // Les réglages ont déjà leur pile de navigation.
                 footerTab("account") { SettingsView() }
             }
@@ -131,6 +129,8 @@ struct RootTabs: View {
             footerButton(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", "heart", "following")
             footerButton("Demandes", "tray.and.arrow.down", "requests")
             footerButton("Téléchargements", "arrow.down.circle", "downloads")
+            // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
+            if session.isAdmin { footerButton("Admin", "shield", "controls") }
             Divider().padding(.vertical, 6).padding(.horizontal, 16)
             Button { selection = "account" } label: {
                 HStack(spacing: 10) {

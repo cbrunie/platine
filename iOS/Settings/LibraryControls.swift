@@ -60,7 +60,7 @@ struct LibraryControlsView: View {
             .settingsRow()
         }
         .settingsStyle()
-        .navigationTitle("Contrôles")
+        .navigationTitle("Admin")
         .task {
             while !Task.isCancelled {
                 async let activity = try? client.json("GET", "/library/activity")

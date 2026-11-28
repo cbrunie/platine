@@ -14,9 +14,9 @@ struct LibraryView: View {
                     #if !targetEnvironment(macCatalyst)
                     PageTitle("Discothèque") {
                         if session.isAdmin {
-                            NavigationLink { LibraryControlsView() } label: { HeaderIcon("slider.horizontal.3") }
+                            NavigationLink { LibraryControlsView() } label: { HeaderIcon("shield") }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Contrôles")
+                                .accessibilityLabel("Admin")
                         }
                     }
                     .padding(.horizontal)
@@ -50,7 +50,7 @@ struct LibraryView: View {
             .navigationTitle("Discothèque")
             .toolbar {
                 if session.isAdmin {
-                    NavigationLink { LibraryControlsView() } label: { Label("Contrôles", systemImage: "slider.horizontal.3") }
+                    NavigationLink { LibraryControlsView() } label: { Label("Admin", systemImage: "shield") }
                 }
             }
             #else

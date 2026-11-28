@@ -50,7 +50,6 @@ struct MacRoot: View {
                     row("Albums", "square.stack", .albums)
                     row("Morceaux", "music.note", .tracks)
                     row("Playlists", "music.note.list", .playlists)
-                    if session.isAdmin { row("Contrôles", "slider.horizontal.3", .controls) }
                 }
                 if !playlists.isEmpty {
                     Section("Playlists") {
@@ -128,6 +127,8 @@ struct MacRoot: View {
             footerButton(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", "heart", .following)
             footerButton("Demandes", "tray.and.arrow.down", .requests)
             footerButton("Téléchargements", "arrow.down.circle", .downloads)
+            // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
+            if session.isAdmin { footerButton("Admin", "shield", .controls) }
             Divider().padding(.vertical, 6)
             // Le compte s'ouvre en grand dans la page, pas dans une feuille.
             Button { page = .account } label: {
