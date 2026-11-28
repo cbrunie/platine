@@ -25,13 +25,18 @@ private struct TVRoot: View {
     var body: some View {
         Group {
             if let client = session.client, !TVTab.debugLogin {
+                // Rangé comme Projecteur et JellyTV : la barre latérale, le compte en tête.
                 TabView(selection: $tab) {
-                    Tab("Accueil", systemImage: "house.fill", value: .home) { TVHome() }
-                    Tab("Discothèque", systemImage: "square.stack.fill", value: .library) { TVLibrary() }
-                    Tab("Playlists", systemImage: "music.note.list", value: .playlists) { TVPlaylists() }
-                    Tab("À l'écoute", systemImage: "opticaldisc.fill", value: .nowPlaying) { TVNowPlaying() }
-                    Tab(value: .search, role: .search) { TVSearch() }
+                    Tab(session.user?.displayName ?? "Compte", systemImage: "person.crop.circle", value: .account) { TVAccount() }
+                    Tab(value: TVTab.search, role: .search) { TVSearch() }
+                    Tab("Accueil", systemImage: "house", value: .home) { TVHome() }
+                    Tab("À l'écoute", systemImage: "opticaldisc", value: .nowPlaying) { TVNowPlaying() }
+                    TabSection("Discothèque") {
+                        Tab("Albums", systemImage: "square.stack", value: TVTab.library) { TVLibrary() }
+                        Tab("Playlists", systemImage: "music.note.list", value: TVTab.playlists) { TVPlaylists() }
+                    }
                 }
+                .tabViewStyle(.sidebarAdaptable)
                 .environment(\.client, client)
                 .environment(\.showNowPlaying, ShowNowPlaying(tab: $tab))
                 .task(id: client.token) {
@@ -50,7 +55,7 @@ private struct TVRoot: View {
     }
 }
 
-enum TVTab: String, Hashable { case home, library, playlists, nowPlaying, search }
+enum TVTab: String, Hashable { case account, home, library, playlists, nowPlaying, search }
 
 extension TVTab {
     /// `-platineTab library` : l'onglet de départ, pour les captures. Absent des builds Release.
@@ -82,4 +87,20 @@ struct ShowNowPlaying {
     var tab: Binding<TVTab>?
 
     func callAsFunction() { tab?.wrappedValue = .nowPlaying }
+}
+
+/// Le compte : qui est connecté, à quel serveur, et la déconnexion.
+private struct TVAccount: View {
+    @Environment(Session.self) private var session
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "person.crop.circle.fill").font(.system(size: 96)).foregroundStyle(.tint)
+            Text(session.user?.displayName ?? "").font(.title2.bold())
+            Text(session.server).font(.callout).foregroundStyle(.secondary)
+            Button("Se déconnecter", role: .destructive) { session.logout() }
+                .padding(.top, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
