@@ -64,12 +64,9 @@ struct MacRoot: View {
                     }
                 }
             }
-            // La sélection discrète de Musique : un gris, pas un aplat de couleur.
-            .tint(.white.opacity(0.14))
-            .environment(\.defaultMinListRowHeight, 30)
+            // La barre de Coulisse, celle de Projecteur : mêmes lignes, même sélection, même pied.
+            .sidebarList()
             .safeAreaInset(edge: .bottom, spacing: 0) { footer }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 230)
-            .toolbar(removing: .sidebarToggle)
         } detail: {
             if showsPlayer {
                 MacPlayerView { showsPlayer = false }
@@ -112,60 +109,24 @@ struct MacRoot: View {
     }
 
     private func row(_ title: String, _ symbol: String, _ page: Page) -> some View {
-        Label {
-            // Sans couleur explicite, la ligne choisie s'efface quand la fenêtre n'a plus le focus.
-            Text(title).foregroundStyle(Color.primary)
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(Color.sage)
-        }
-        .tag(page)
+        SidebarRow(title, systemImage: symbol).tag(page)
     }
 
-    /// Suivis, demandes et téléchargements, puis le compte, comme le profil de Musique.
+    /// Suivis, demandes, téléchargements et admin, puis le compte, comme le profil de Musique.
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            footerButton(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", "heart", .following)
-            footerButton("Demandes", "tray.and.arrow.down", .requests)
-            footerButton("Téléchargements", "arrow.down.circle", .downloads)
-            // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
-            if session.isAdmin { footerButton("Admin", "shield", .controls) }
-            Divider().padding(.vertical, 6)
-            // Le compte s'ouvre en grand dans la page, pas dans une feuille.
-            Button { page = .account } label: {
-                HStack(spacing: 10) {
-                    if let avatar = profile?.avatarUrl, !avatar.isEmpty {
-                        Cover(path: avatar, size: 26, radius: 13)
-                    } else {
-                        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(Color.sage)
-                    }
-                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").oneLine()
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(page == .account ? Color.white.opacity(0.1) : .clear, in: .rect(cornerRadius: 8))
-                .contentShape(.rect)
+        SidebarFooter([.init(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", systemImage: "heart", id: Page.following),
+                       .init("Demandes", systemImage: "tray.and.arrow.down", id: .requests),
+                       .init("Téléchargements", systemImage: "arrow.down.circle", id: .downloads)]
+                          // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
+                          + (session.isAdmin ? [.init("Admin", systemImage: "shield", id: .controls)] : []),
+                      account: profile?.displayName ?? session.user?.displayName ?? "Compte", accountID: .account,
+                      selected: page, select: { page = $0 }) {
+            if let avatar = profile?.avatarUrl, !avatar.isEmpty {
+                Cover(path: avatar, size: 26, radius: 13)
+            } else {
+                Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(Color.sage)
             }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 10)
-        .padding(.bottom, 10)
-    }
-
-    private func footerButton(_ title: String, _ symbol: String, _ target: Page) -> some View {
-        Button { page = target } label: {
-            Label {
-                Text(title)
-            } icon: {
-                Image(systemName: symbol).foregroundStyle(Color.sage)
-            }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(page == target ? Color.white.opacity(0.1) : .clear, in: .rect(cornerRadius: 8))
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder

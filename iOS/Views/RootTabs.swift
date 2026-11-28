@@ -123,42 +123,21 @@ struct RootTabs: View {
             .defaultVisibility(.hidden, for: .tabBar, .sidebar)
     }
 
-    /// Suivis, demandes et téléchargements, puis le compte, comme le pied de la barre latérale du Mac.
+    /// Suivis, demandes, téléchargements et admin, puis le compte : le pied de Coulisse, comme sur Mac.
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            footerButton(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", "heart", "following")
-            footerButton("Demandes", "tray.and.arrow.down", "requests")
-            footerButton("Téléchargements", "arrow.down.circle", "downloads")
-            // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
-            if session.isAdmin { footerButton("Admin", "shield", "controls") }
-            Divider().padding(.vertical, 6).padding(.horizontal, 16)
-            Button { selection = "account" } label: {
-                HStack(spacing: 10) {
-                    if let avatar = profile?.avatarUrl, !avatar.isEmpty {
-                        Cover(path: avatar, size: 28, radius: 14)
-                    } else {
-                        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(Color.sage)
-                    }
-                    Text(profile?.displayName ?? session.user?.displayName ?? "Compte").oneLine()
-                    Spacer(minLength: 0)
-                }
-                .row(selected: selection == "account")
+        SidebarFooter([.init(unseen > 0 ? "Suivis · \(unseen)" : "Suivis", systemImage: "heart", id: "following"),
+                       .init("Demandes", systemImage: "tray.and.arrow.down", id: "requests"),
+                       .init("Téléchargements", systemImage: "arrow.down.circle", id: "downloads")]
+                          // Le bouclier de JellyTV : l'administration de la discothèque, pour un admin.
+                          + (session.isAdmin ? [.init("Admin", systemImage: "shield", id: "controls")] : []),
+                      account: profile?.displayName ?? session.user?.displayName ?? "Compte", accountID: "account",
+                      selected: selection, style: .tabView, select: { selection = $0 }) {
+            if let avatar = profile?.avatarUrl, !avatar.isEmpty {
+                Cover(path: avatar, size: 28, radius: 14)
+            } else {
+                Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(Color.sage)
             }
-            .buttonStyle(.plain)
         }
-    }
-
-    private func footerButton(_ title: String, _ symbol: String, _ id: String) -> some View {
-        Button { selection = id } label: {
-            Label {
-                Text(title)
-            } icon: {
-                Image(systemName: symbol).foregroundStyle(selection == id ? Color.white : Color.sage)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .row(selected: selection == id)
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -176,18 +155,6 @@ struct RootTabs: View {
 
     private func stacked(@ViewBuilder _ content: () -> some View) -> some View {
         NavigationStack { content().platineDestinations() }
-    }
-}
-private extension View {
-    /// Une ligne du pied calée sur celles de la barre latérale : même retrait, même hauteur,
-    /// et la même pastille sauge quand elle est choisie.
-    func row(selected: Bool) -> some View {
-        // Mesuré sur la barre latérale d'iPadOS : pastille à 16 pt du bord, icône 21 pt plus loin.
-        padding(.horizontal, 21)
-            .frame(minHeight: 44)
-            .background(selected ? Color.sage : .clear, in: .capsule)
-            .contentShape(.capsule)
-            .padding(.horizontal, 16)
     }
 }
 /// Suit l'ouverture de la barre latérale de l'iPad : SwiftUI ne donne que son style (`tabBarPlacement`

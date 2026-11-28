@@ -69,19 +69,6 @@ struct SkeletonLine: View {
     }
 }
 
-/// Un titre de partie qui défile avec la liste. Pas d'en-tête de `Section` dans les listes simples :
-/// sur Mac, le flou sous la barre de titre s'accroche à l'en-tête collé en haut et recouvre la liste.
-struct ListHeading: View {
-    let title: String
-
-    var body: some View {
-        Text(title).font(.display(20, relativeTo: .title3))
-            .accessibilityAddTraits(.isHeader)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-    }
-}
-
 /// La fiche d'un artiste, d'un album ou d'une playlist : une ligne par fait, libellé à gauche.
 struct FactsTable: View {
     let facts: [(label: String, value: String)]
@@ -319,26 +306,15 @@ struct Route: Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-/// Un rayon : un titre, un « Tout voir » facultatif, et des pochettes qui défilent.
+/// Un rayon : un titre, un « Tout voir » facultatif, et des pochettes qui défilent. Le rayon de
+/// Coulisse, celui de Projecteur.
 struct Shelf<Content: View, More: View>: View {
     let title: String
     @ViewBuilder var content: Content
     @ViewBuilder var more: More
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.display(20, relativeTo: .title3))
-                Spacer()
-                more.font(.subheadline).foregroundStyle(.secondary)
-            }
-            .padding(.horizontal)
-            ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 14) { content }
-                    .padding(.horizontal)
-            }
-            .scrollIndicators(.hidden)
-        }
+        Rail(title, content: { content }, accessory: { more })
     }
 }
 

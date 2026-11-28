@@ -1,15 +1,14 @@
 {
-  "originHash" : "9478236854a87fcd6694d0f6ba84aa5a1edbc5f7ed5445bb3aa094a650f15902",
-  "pins" : [
+  "pins": [
     {
-      "identity" : "coulisse",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/cbrunie/coulisse",
-      "state" : {
-        "revision" : "b4fcf05c0332c72231bf9f06343da4048292edbb",
-        "version" : "2.2.7"
+      "identity": "coulisse",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/cbrunie/coulisse",
+      "state": {
+        "revision": "75aca864bc71d5bd013287bbccd8f678a1040fe2",
+        "version": "2.3.2"
       }
     }
   ],
-  "version" : 3
+  "version": 3
 }

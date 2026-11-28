@@ -166,7 +166,6 @@ struct AlbumsView: View {
     @State private var ranked: [LocalAlbum] = []
     @State private var listens = ListenCounts.saved
     @State private var listensFailed = false
-    @State private var tracker = LetterTracker()
     @State private var total: Int?
     @State private var loaded = false
     @State private var error: String?
@@ -176,55 +175,36 @@ struct AlbumsView: View {
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16)]
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                if !ready {
-                    LazyVGrid(columns: columns, spacing: 20) { SkeletonGrid(count: 24) }.padding()
-                } else if sort == .name {
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(sections) { section in
-                            Section {
-                                ForEach(section.items) { album in
-                                    NavigationLink(value: album) { AlbumCard(album: album) }.buttonStyle(.plain)
-                                        .id(album.id)
-                                        .tracksLetter(section.letter, id: album.id, in: tracker)
-                                }
-                            } header: {
-                                Text(section.letter).font(.display(20, relativeTo: .title3))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                    }
-                    .padding()
-                } else {
-                    ListensNote(unavailable: listens == nil).padding([.horizontal, .top])
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(ranked) { album in
-                            NavigationLink(value: album) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    AlbumCard(album: album)
-                                    if let count = listens?.count(album: album.name, artist: album.artistName) {
-                                        Text("\(count.formatted()) écoutes").font(.caption.weight(.medium)).foregroundStyle(Color.sage)
+        Group {
+            if ready, sort == .name {
+                // La grille par lettre de Coulisse, celle des films et séries de Projecteur.
+                LetterGrid(sections, columns: columns) { album in
+                    NavigationLink(value: album) { AlbumCard(album: album) }.buttonStyle(.plain)
+                }
+            } else {
+                ScrollView {
+                    if !ready {
+                        LazyVGrid(columns: columns, spacing: 20) { SkeletonGrid(count: 24) }.padding()
+                    } else {
+                        ListensNote(unavailable: listens == nil).padding([.horizontal, .top])
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(ranked) { album in
+                                NavigationLink(value: album) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        AlbumCard(album: album)
+                                        if let count = listens?.count(album: album.name, artist: album.artistName) {
+                                            Text("\(count.formatted()) écoutes").font(.caption.weight(.medium)).foregroundStyle(Color.sage)
+                                        }
                                     }
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
-                    }
-                    .padding()
-                }
-            }
-            .defaultScrollAnchor(DebugScreen.anchor)
-            .scrollIndicators(.never)
-            .tracksListTop(in: tracker)
-            .safeAreaInset(edge: .trailing, spacing: 0) {
-                if sort == .name, !sections.isEmpty {
-                    AlphabetRail(available: sections.map(\.letter), tracker: tracker) { letter in
-                        if let first = sections.first(where: { $0.letter == letter })?.items.first {
-                            proxy.scrollTo(first.id, anchor: .top)
-                        }
+                        .padding()
                     }
                 }
+                .defaultScrollAnchor(DebugScreen.anchor)
+                .scrollIndicators(.never)
             }
         }
         .overlay {
@@ -295,45 +275,28 @@ struct ArtistsView: View {
     @State private var ranked: [LibraryArtist] = []
     @State private var listens = ListenCounts.saved
     @State private var listensFailed = false
-    @State private var tracker = LetterTracker()
     @State private var total: Int?
     @State private var loaded = false
 
     private var ready: Bool { loaded && (sort == .name || listens != nil || listensFailed) }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                if !ready {
-                    SkeletonRows(count: 12, side: 48, round: true)
-                } else if sort == .name {
-                    ForEach(sections) { section in
-                        ListHeading(title: section.letter)
-                        ForEach(section.items) { artist in
-                            row(artist)
-                                .id(artist.id)
-                                .tracksLetter(section.letter, id: artist.id, in: tracker)
-                                .listRowBackground(Color.clear)
-                        }
-                    }
-                } else {
-                    ListensNote(unavailable: listens == nil).listRowBackground(Color.clear).listRowSeparator(.hidden)
-                    ForEach(ranked) { row($0) }
-                }
-            }
-            .listStyle(.plain)
-            .defaultScrollAnchor(DebugScreen.anchor)
-            .scrollIndicators(.never)
-            .tracksListTop(in: tracker)
-            // Par-dessus la liste, comme l'index natif : elle garde toute sa largeur.
-            .overlay(alignment: .trailing) {
-                if sort == .name, ready, !sections.isEmpty {
-                    AlphabetRail(available: sections.map(\.letter), tracker: tracker) { letter in
-                        if let first = sections.first(where: { $0.letter == letter })?.items.first {
-                            proxy.scrollTo(first.id, anchor: .top)
-                        }
+        Group {
+            if ready, sort == .name {
+                // La liste par lettre de Coulisse, avec sa réglette par-dessus le bord droit.
+                LetterList(sections) { row($0) }
+            } else {
+                List {
+                    if !ready {
+                        SkeletonRows(count: 12, side: 48, round: true)
+                    } else {
+                        ListensNote(unavailable: listens == nil).listRowBackground(Color.clear).listRowSeparator(.hidden)
+                        ForEach(ranked) { row($0) }
                     }
                 }
+                .listStyle(.plain)
+                .defaultScrollAnchor(DebugScreen.anchor)
+                .scrollIndicators(.never)
             }
         }
         .pageBackground()
@@ -417,49 +380,27 @@ struct TracksView: View {
     @Environment(Player.self) private var player
     @State private var tracks: [Track] = []
     @State private var sections: [LetterSection<Track>] = []
-    @State private var tracker = LetterTracker()
     @State private var total: Int?
     @State private var search = ""
 
     var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                if total == nil { SkeletonRows(count: 12) }
-                if total != nil, !tracks.isEmpty {
-                    Button { player.play(tracks.shuffled(), using: client) } label: {
-                        Label("Lecture aléatoire", systemImage: "shuffle").frame(maxWidth: .infinity).foregroundStyle(Color.base100)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+        // La liste par lettre de Coulisse ; pas de réglette pendant une recherche.
+        LetterList(total == nil ? [] : sections, showsRail: search.isEmpty && total != nil) {
+            if total == nil { SkeletonRows(count: 12) }
+            if total != nil, !tracks.isEmpty {
+                Button { player.play(tracks.shuffled(), using: client) } label: {
+                    Label("Lecture aléatoire", systemImage: "shuffle").frame(maxWidth: .infinity).foregroundStyle(Color.base100)
                 }
-                ForEach(total == nil ? [] : sections) { section in
-                    ListHeading(title: section.letter)
-                    ForEach(section.items) { track in
-                        TrackRow(track: track) {
-                            player.play(tracks, from: tracks.firstIndex(of: track) ?? 0, using: client)
-                        }
-                        .padding(.trailing, search.isEmpty ? 12 : 0)
-                        .id(track.id)
-                        .tracksLetter(section.letter, id: track.id, in: tracker)
-                        .listRowBackground(Color.clear)
-                    }
-                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .listStyle(.plain)
-            .defaultScrollAnchor(DebugScreen.anchor)
-            .scrollIndicators(.never)
-            .tracksListTop(in: tracker)
-            .overlay(alignment: .trailing) {
-                if search.isEmpty, total != nil, !sections.isEmpty {
-                    AlphabetRail(available: sections.map(\.letter), tracker: tracker) { letter in
-                        if let first = sections.first(where: { $0.letter == letter })?.items.first {
-                            proxy.scrollTo(first.id, anchor: .top)
-                        }
-                    }
-                }
+        } row: { track in
+            TrackRow(track: track) {
+                player.play(tracks, from: tracks.firstIndex(of: track) ?? 0, using: client)
             }
+            .padding(.trailing, search.isEmpty ? 12 : 0)
         }
         .overlay { if total == 0 { ContentUnavailableView.search(text: search) } }
         .pageBackground()
