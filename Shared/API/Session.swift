@@ -42,7 +42,8 @@ final class Session {
     }
 
     func login(username: String, password: String) async throws {
-        guard let url = URL(string: server.trimmingCharacters(in: .whitespaces)) else {
+        let text = server.trimmingCharacters(in: .whitespaces)
+        guard let url = text.lowercased() == "demo" ? Demo.server : URL(string: text) else {
             throw URLError(.badURL)
         }
         let auth = try await DroppedNeedle(server: url).login(username: username, password: password)

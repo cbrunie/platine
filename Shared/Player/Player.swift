@@ -333,7 +333,10 @@ final class Player {
 
     private static func item(for track: Track, using client: DroppedNeedle) -> AVPlayerItem {
         // ponytail: clé AVURLAsset non documentée mais répandue ; un AVAssetResourceLoader si Apple la retire.
-        let asset = AVURLAsset(url: client.streamURL(track.id), options: ["AVURLAssetHTTPHeaderFieldsKey": client.authHeaders])
+        var options: [String: Any] = ["AVURLAssetHTTPHeaderFieldsKey": client.authHeaders]
+        // Mode démo : Git LFS sert les MP3 en `application/octet-stream`.
+        if Demo.isDemo(client.server) { options[AVURLAssetOverrideMIMETypeKey] = "audio/mpeg" }
+        let asset = AVURLAsset(url: client.streamURL(track.id), options: options)
         return AVPlayerItem(asset: asset)
     }
 

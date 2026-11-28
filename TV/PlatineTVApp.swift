@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct PlatineTVApp: App {
     init() {
+        URLProtocol.registerClass(DemoServer.self)
         if let client = Session.shared.client { Player.shared.connect(client) }
     }
 

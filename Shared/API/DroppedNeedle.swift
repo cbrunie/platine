@@ -105,7 +105,8 @@ nonisolated struct DroppedNeedle: Sendable {
 
     /// Le flux d'une piste, qui accepte les requêtes Range pour avancer dans le morceau.
     func streamURL(_ trackFileID: String) -> URL {
-        server.appending(path: Self.prefix + "/stream/local/\(trackFileID)")
+        if Demo.isDemo(server) { return Demo.stream(trackFileID) }
+        return server.appending(path: Self.prefix + "/stream/local/\(trackFileID)")
     }
 
     // MARK: Compte
@@ -441,6 +442,10 @@ nonisolated struct DroppedNeedle: Sendable {
     /// ne sait pas interroger avec un jeton.
     @concurrent
     func image(_ path: String) async throws -> Data {
+        if Demo.isDemo(server), !path.hasPrefix("http") {
+            guard let url = Demo.image(path) else { throw URLError(.fileDoesNotExist) }
+            return try await data(URLRequest(url: url), keeps: false)
+        }
         let url = path.hasPrefix("http") ? URL(string: path) : URL(string: path, relativeTo: server)
         guard let url else { throw URLError(.badURL) }
         return try await data(URLRequest(url: url), keeps: false)

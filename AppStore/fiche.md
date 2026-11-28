@@ -126,19 +126,20 @@ Première version de Platine.
 ## Informations pour la vérification (App Review)
 
 - **Connexion requise** : Oui
-- **Identifiant / mot de passe** : (à remplir à la main)
+- **Identifiant / mot de passe** : `demo` / `demo`
 - **Notes** (en anglais, les vérificateurs lisent l'anglais) :
 
 ```
 Platine is a native client for DroppedNeedle, an open-source self-hosted music server. Each user connects to their own server; there is no account system run by us.
 
-To review the app, use our demo server:
-1. On the login screen, replace the "Server" field with:
-   https://diffusion.tail1c4018.ts.net:10000
-2. Enter the username and password provided in the Sign-In Information above.
+To review the app, use the built-in demo mode (no server needed):
+1. On the login screen, type "demo" in the "Server" field.
+2. Enter username "demo" and password "demo".
 3. Tap "Poser l'aiguille" (Sign in).
 
-Apple TV: the same server URL and credentials work on the tvOS login screen.
+The demo library contains Creative Commons music (Jan Morgenstern's Elephants Dream score, and tracks by Kevin MacLeod, CC BY): albums, artists, a playlist, search and playback all work. Requests, concerts and following need the user's own DroppedNeedle server and are empty in demo mode.
+
+Apple TV: the same "demo" server and credentials work on the tvOS login screen.
 CarPlay: once signed in on iPhone, the CarPlay app shows three tabs (crate, recent albums, playlists) and the Now Playing screen.
 Siri / Shortcuts: "Lire le bac" (play crate), pause, resume, next track, via App Shortcuts.
 

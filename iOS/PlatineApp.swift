@@ -7,6 +7,7 @@ struct PlatineApp: App {
     @State private var showsPlayer = false
 
     init() {
+        URLProtocol.registerClass(DemoServer.self)
         // Les titres de navigation en Space Grotesk, comme les titres du web.
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [.font: UIFont.display(34)]
