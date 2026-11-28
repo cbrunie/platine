@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// La file de suggestions de DroppedNeedle, avec la raison de chacune.
-struct DiscoverView: View {
+struct SuggestionQueueView: View {
     @Environment(\.client) private var client
 
     var body: some View {
@@ -31,6 +31,6 @@ struct DiscoverView: View {
             }
         }
         .pageBackground()
-        .navigationTitle("Découvrir")
+        .navigationTitle("Chez le disquaire")
     }
 }

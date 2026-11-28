@@ -3,6 +3,10 @@ import SwiftUI
 /// L'accueil du web (« Good evening ») rangé comme celui de Musique : ce
 /// qu'on vient d'écouter, le bac, les mixes faits pour soi, puis le reste.
 struct HomeView: View {
+    /// L'accueil : ce qu'on a. Découvrir : ce qui est à découvrir et à demander.
+    enum Page { case home, discover }
+    var page = Page.home
+
     @Environment(\.client) private var client
     @Environment(Session.self) private var session
     @Environment(Player.self) private var player
@@ -26,69 +30,76 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 32) {
                         #if targetEnvironment(macCatalyst)
                         // Tout en haut, comme le titre de Musique : on remonte sous la bande de la fenêtre.
-                        Text(greeting).font(.display(30, relativeTo: .largeTitle)).padding(.horizontal).padding(.top, -34)
+                        Text(title).font(.display(30, relativeTo: .largeTitle)).padding(.horizontal).padding(.top, -34)
                         #endif
-                        if !player.history.isEmpty {
-                            Shelf("Dernières écoutes") {
-                                ForEach(player.history) { listen in
-                                    if let source = listen.source {
-                                        NavigationLink(value: source.route) { SourceCard(source: source) }
+                        if page == .home {
+                            if !player.history.isEmpty {
+                                Shelf("Dernières écoutes") {
+                                    ForEach(player.history) { listen in
+                                        if let source = listen.source {
+                                            NavigationLink(value: source.route) { SourceCard(source: source) }
+                                                .buttonStyle(.plain)
+                                        } else {
+                                            // Les plages lancées seules se suivent, comme avant.
+                                            let singles = player.history.filter { $0.source == nil }.map(\.track)
+                                            let start = { player.play(singles, from: singles.firstIndex(of: listen.track) ?? 0, using: client) }
+                                            Button(action: start) { TrackCard(track: listen.track, play: start) }
                                             .buttonStyle(.plain)
-                                    } else {
-                                        // Les plages lancées seules se suivent, comme avant.
-                                        let singles = player.history.filter { $0.source == nil }.map(\.track)
-                                        let start = { player.play(singles, from: singles.firstIndex(of: listen.track) ?? 0, using: client) }
-                                        Button(action: start) { TrackCard(track: listen.track, play: start) }
-                                        .buttonStyle(.plain)
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        if !home.crate.isEmpty { crate(home.crate) }
+                            if !home.crate.isEmpty { crate(home.crate) }
+                            mixes(home)
+                            if let discover = home.discover { radios(discover) }
 
-                        recommendations(home)
-
-                        if !home.recent.isEmpty {
-                            Shelf("Fraîchement pressés") {
-                                ForEach(home.recent) { album in
-                                    NavigationLink(value: album) { AlbumCard(album: album, width: 150) }
-                                        .buttonStyle(.plain)
+                            if !home.recent.isEmpty {
+                                Shelf("Fraîchement pressés") {
+                                    ForEach(home.recent) { album in
+                                        NavigationLink(value: album) { AlbumCard(album: album, width: 150) }
+                                            .buttonStyle(.plain)
+                                    }
                                 }
                             }
-                        }
-
-                        if let feed = home.feed {
-                            section("Populaire en ce moment", feed.popularAlbums, chart: .popular)
-                            section("Artistes tendance", feed.trendingArtists, chart: .trending)
-                            section("Tes albums phares", feed.yourTopAlbums, chart: .yourTop)
-                            section("Nouveautés", feed.freshReleases)
-                            section("Pour toi", feed.recommendedArtists)
-                            section("Tes artistes favoris", feed.favoriteArtists)
-                        }
-
-                        moreToExplore(home)
-
-                        if !home.concerts.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Concerts à venir").font(.display(20, relativeTo: .title3))
-                                    Spacer()
-                                    NavigationLink("Tout voir", value: Route("concerts") { ConcertsView() })
-                                        .font(.subheadline).foregroundStyle(.secondary)
-                                }
-                                ForEach(home.concerts.prefix(3)) { ConcertRow(concert: $0) }
+                            section("À redécouvrir", home.discover?.rediscover)
+                            if let feed = home.feed {
+                                section("Tes albums phares", feed.yourTopAlbums, chart: .yourTop)
+                                section("Tes artistes favoris", feed.favoriteArtists)
                             }
+                        } else {
+                            recommendations(home)
+
+                            if let feed = home.feed {
+                                section("Populaire en ce moment", feed.popularAlbums, chart: .popular)
+                                section("Artistes tendance", feed.trendingArtists, chart: .trending)
+                                section("Nouveautés", feed.freshReleases)
+                                section("Pour toi", feed.recommendedArtists)
+                            }
+
+                            moreToExplore(home)
+
+                            if !home.concerts.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(alignment: .firstTextBaseline) {
+                                        Text("Concerts à venir").font(.display(20, relativeTo: .title3))
+                                        Spacer()
+                                        NavigationLink("Tout voir", value: Route("concerts") { ConcertsView() })
+                                            .font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                    ForEach(home.concerts.prefix(3)) { ConcertRow(concert: $0) }
+                                }
+                                .padding(.horizontal)
+                            }
+
+                            NavigationLink(value: Route("suggestions") { SuggestionQueueView() }) {
+                                Label("Fouiller chez le disquaire", systemImage: "sparkles")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.glass)
+                            .controlSize(.large)
                             .padding(.horizontal)
                         }
-
-                        NavigationLink(value: Route("discover") { DiscoverView() }) {
-                            Label("Fouiller chez le disquaire", systemImage: "sparkles")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.glass)
-                        .controlSize(.large)
-                        .padding(.horizontal)
                     }
                     .padding(.vertical)
                 }
@@ -98,12 +109,12 @@ struct HomeView: View {
             #if targetEnvironment(macCatalyst)
             // Sur Mac, le bonjour défile avec la page : la barre de l'accueil ne se voit plus. Sans elle,
             // macOS mettrait la sienne ; les pages poussées gardent leur titre.
-            .navigationTitle(greeting)
+            .navigationTitle(title)
             .toolbar(removing: .title)
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
             .scrollEdgeEffectHidden(true, for: .top)
             #else
-            .navigationTitle(greeting)
+            .navigationTitle(title)
             #endif
             .platineDestinations()
             .navigationDestination(item: Binding(get: { PlayerNavigation.shared.target },
@@ -113,13 +124,16 @@ struct HomeView: View {
             .toolbar {
                 // Le compte, les demandes et les concerts derrière l'avatar, pas dans les onglets.
                 // Quand la barre latérale est ouverte (iPad), ils y sont déjà ; fermée, le bouton revient.
-                if !sidebarOpen {
+                if page == .discover {
+                    // Les demandes, à côté de ce qu'on découvre.
+                    NavigationLink(value: Route("requests") { RequestsView() }) { Image(systemName: "tray.and.arrow.down") }
+                        .accessibilityLabel("Demandes")
+                } else if !sidebarOpen {
                     Menu {
                         Button("Compte", systemImage: "person.crop.circle") { showsSettings = true }
                         NavigationLink(value: Route("following") { FollowingView() }) {
                             Label(unseen > 0 ? "Suivis · \(unseen) nouveautés" : "Suivis", systemImage: "heart")
                         }
-                        NavigationLink(value: Route("requests") { RequestsView() }) { Label("Demandes", systemImage: "tray.and.arrow.down") }
                         NavigationLink(value: Route("downloads") { DownloadsView() }) { Label("Téléchargements", systemImage: "arrow.down.circle") }
                     } label: {
                         Image(systemName: "person.crop.circle")
@@ -127,7 +141,7 @@ struct HomeView: View {
                                 if unseen > 0 { Circle().fill(Color.sage).frame(width: 9, height: 9).offset(x: 3, y: -2) }
                             }
                     }
-                    .accessibilityLabel(unseen > 0 ? "Compte et suivis, \(unseen) nouveautés" : "Compte, suivis, demandes et téléchargements")
+                    .accessibilityLabel(unseen > 0 ? "Compte et suivis, \(unseen) nouveautés" : "Compte, suivis et téléchargements")
                 }
             }
             #endif
@@ -193,8 +207,6 @@ struct HomeView: View {
             }
             topPicks((discover.topPicks?.items ?? []).filter { !ignored.contains($0.id) })
             lounge(discover)
-            mixes(home)
-            radios(discover)
             NavigationLink(value: Route("playlist-discovery") { PlaylistDiscoveryView() }) {
                 HStack(spacing: 14) {
                     Image(systemName: "wand.and.stars").font(.title2).foregroundStyle(Color.sage).frame(width: 34)
@@ -215,14 +227,11 @@ struct HomeView: View {
             ForEach(discover.becauseYouListenTo ?? []) { because in
                 section("Parce que tu écoutes \(because.seedArtist)", because.section)
             }
-            section("À redécouvrir", discover.rediscover)
             section("Les essentiels qui te manquent", discover.missingEssentials)
             section("Artistes à découvrir", discover.artistsYouMightLike)
             section("Populaire dans tes styles", discover.popularInYourGenres)
             section("Du neuf chez tes artistes", discover.newFromFollowed)
             section("Anniversaires", discover.anniversaries)
-        } else {
-            mixes(home)
         }
     }
 
@@ -497,6 +506,8 @@ struct HomeView: View {
     }
 
     // MARK: Chargement
+
+    private var title: String { page == .discover ? "Découvrir" : greeting }
 
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {

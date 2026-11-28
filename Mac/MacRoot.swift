@@ -18,7 +18,7 @@ struct MacRoot: View {
     @State private var columns = NavigationSplitViewVisibility.all
 
     enum Page: Hashable {
-        case search, home, recent, artists, albums, tracks, playlists, controls
+        case search, home, discover, recent, artists, albums, tracks, playlists, controls
         case playlist(PlaylistSummary)
         case following, requests, downloads, account
     }
@@ -43,6 +43,7 @@ struct MacRoot: View {
             List(selection: $page) {
                 row("Rechercher", "magnifyingglass", .search)
                 row("Accueil", "house", .home)
+                row("Découvrir", "sparkles", .discover)
                 Section("Discothèque") {
                     row("Récemment ajoutés", "clock", .recent)
                     row("Artistes", "music.microphone", .artists)
@@ -176,6 +177,7 @@ struct MacRoot: View {
             DebugScreen.view(DebugScreen.name ?? "")
         #endif
         case .home: HomeView()
+        case .discover: HomeView(page: .discover)
         case .search: SearchView()
         case .recent: stacked { RecentAlbumsView() }
         case .artists: stacked { ArtistsView() }

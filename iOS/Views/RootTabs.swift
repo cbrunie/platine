@@ -7,7 +7,14 @@ import SwiftUI
 struct RootTabs: View {
     @Environment(\.client) private var client
     @Environment(Session.self) private var session
-    @State private var selection = "home"
+    @State private var selection = {
+        #if DEBUG
+        // `-platineTab discover` : l'onglet de départ, pour les captures.
+        UserDefaults.standard.string(forKey: "platineTab") ?? "home"
+        #else
+        "home"
+        #endif
+    }()
     @State private var sidebarOpen = false
     @State private var playlists: [PlaylistSummary] = []
     @State private var profile: Profile?
@@ -47,6 +54,9 @@ struct RootTabs: View {
                 .customizationBehavior(.disabled, for: .automatic, .sidebar, .tabBar)
             // L'onglet Discothèque de l'iPhone et de l'iPad debout ; couché, l'iPad montre ses rayons
             // dans la barre latérale (et un onglet masqué de la barre latérale l'est aussi en haut).
+            Tab("Découvrir", systemImage: "sparkles", value: "discover") { HomeView(page: .discover) }
+                .customizationID("discover")
+                .customizationBehavior(.disabled, for: .automatic, .sidebar, .tabBar)
             Tab("Discothèque", systemImage: "square.stack.fill", value: "library") { LibraryView() }
                 .customizationID("library")
                 .customizationBehavior(.disabled, for: .automatic, .sidebar, .tabBar)
