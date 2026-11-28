@@ -2,8 +2,9 @@ import SwiftUI
 
 extension View {
     /// Les pages qu'on peut ouvrir de partout : un album, un artiste, un mix.
-    func platineDestinations() -> some View {
-        compactTitle()
+    /// `ownHeader` : une page principale qui dessine son en-tête (`PageTitle`) et règle sa barre elle-même.
+    func platineDestinations(ownHeader: Bool = false) -> some View {
+        Group { if ownHeader { self } else { compactTitle() } }
             .navigationDestination(for: LocalAlbum.self) { AlbumView(album: $0) }
             .navigationDestination(for: ArtistRef.self) { ArtistView(artist: $0) }
             .navigationDestination(for: Route.self) { $0.page.compactTitle(pushed: true) }

@@ -31,6 +31,9 @@ struct HomeView: View {
                         #if targetEnvironment(macCatalyst)
                         // Tout en haut, comme le titre de Musique : on remonte sous la bande de la fenêtre.
                         Text(title).font(.display(30, relativeTo: .largeTitle)).padding(.horizontal).padding(.top, -34)
+                        #else
+                        // Le titre et ses boutons sur une ligne, juste sous l'heure.
+                        PageTitle(title) { headerButtons }.padding(.horizontal).padding(.bottom, -12)
                         #endif
                         if page == .home {
                             if !player.history.isEmpty {
@@ -114,37 +117,13 @@ struct HomeView: View {
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
             .scrollEdgeEffectHidden(true, for: .top)
             #else
-            .navigationTitle(title)
+            .underEmptyBar()
+            .titleAfterHeader(title, after: 60)
             #endif
-            .platineDestinations()
+            .platineDestinations(ownHeader: true)
             .navigationDestination(item: Binding(get: { PlayerNavigation.shared.target },
                                                  set: { PlayerNavigation.shared.target = $0 })) { $0.page }
             .navigationDestination(for: String.self) { GenreView(name: $0) }
-            #if !targetEnvironment(macCatalyst)
-            .toolbar {
-                // Le compte, les demandes et les concerts derrière l'avatar, pas dans les onglets.
-                // Quand la barre latérale est ouverte (iPad), ils y sont déjà ; fermée, le bouton revient.
-                if page == .discover {
-                    // Les demandes, à côté de ce qu'on découvre.
-                    NavigationLink(value: Route("requests") { RequestsView() }) { Image(systemName: "tray.and.arrow.down") }
-                        .accessibilityLabel("Demandes")
-                } else if !sidebarOpen {
-                    Menu {
-                        Button("Compte", systemImage: "person.crop.circle") { showsSettings = true }
-                        NavigationLink(value: Route("following") { FollowingView() }) {
-                            Label(unseen > 0 ? "Suivis · \(unseen) nouveautés" : "Suivis", systemImage: "heart")
-                        }
-                        NavigationLink(value: Route("downloads") { DownloadsView() }) { Label("Téléchargements", systemImage: "arrow.down.circle") }
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                            .overlay(alignment: .topTrailing) {
-                                if unseen > 0 { Circle().fill(Color.sage).frame(width: 9, height: 9).offset(x: 3, y: -2) }
-                            }
-                    }
-                    .accessibilityLabel(unseen > 0 ? "Compte et suivis, \(unseen) nouveautés" : "Compte, suivis et téléchargements")
-                }
-            }
-            #endif
             .sheet(isPresented: $showsSettings) { SettingsView() }
             .onAppear { Task { unseen = (try? await client.unseenReleases().count) ?? 0 } }
         }
@@ -508,6 +487,31 @@ struct HomeView: View {
     // MARK: Chargement
 
     private var title: String { page == .discover ? "Découvrir" : greeting }
+
+    /// Les demandes sur Découvrir ; le compte, les suivis et les téléchargements derrière l'avatar sur
+    /// l'accueil. Quand la barre latérale est ouverte (iPad), ils y sont déjà.
+    @ViewBuilder
+    private var headerButtons: some View {
+        if page == .discover {
+            NavigationLink(value: Route("requests") { RequestsView() }) { HeaderIcon("tray.and.arrow.down") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Demandes")
+        } else if !sidebarOpen {
+            Menu {
+                Button("Compte", systemImage: "person.crop.circle") { showsSettings = true }
+                NavigationLink(value: Route("following") { FollowingView() }) {
+                    Label(unseen > 0 ? "Suivis · \(unseen) nouveautés" : "Suivis", systemImage: "heart")
+                }
+                NavigationLink(value: Route("downloads") { DownloadsView() }) { Label("Téléchargements", systemImage: "arrow.down.circle") }
+            } label: {
+                HeaderIcon("person.crop.circle")
+                    .overlay(alignment: .topTrailing) {
+                        if unseen > 0 { Circle().fill(Color.sage).frame(width: 9, height: 9).offset(x: -4, y: 4) }
+                    }
+            }
+            .accessibilityLabel(unseen > 0 ? "Compte et suivis, \(unseen) nouveautés" : "Compte, suivis et téléchargements")
+        }
+    }
 
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {

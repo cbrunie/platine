@@ -25,6 +25,15 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             List {
+                #if !targetEnvironment(macCatalyst)
+                // Le titre et le champ dans la page : de l'air au-dessus, et entre les deux.
+                VStack(alignment: .leading, spacing: 14) {
+                    PageTitle("Rechercher")
+                    Coulisse.SearchField(text: $text, prompt: "Un disque, un artiste, une plage…") { remember(query) }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                #endif
                 if query.isEmpty { recentSearches }
                 if loadingCatalogue, artists.isEmpty { skeletonArtists }
                 if !artists.isEmpty {
@@ -101,10 +110,15 @@ struct SearchView: View {
                 }
             }
             .pageBackground()
+            #if targetEnvironment(macCatalyst)
             .navigationTitle("Rechercher")
-            .platineDestinations()
             .searchable(text: $text, prompt: "Un disque, un artiste, une plage…")
             .onSubmit(of: .search) { remember(query) }
+            #else
+            .underEmptyBar()
+            .titleAfterHeader("Rechercher", after: 60)
+            #endif
+            .platineDestinations(ownHeader: true)
             .task(id: query) { await search(query) }
         }
     }

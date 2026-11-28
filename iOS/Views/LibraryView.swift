@@ -11,6 +11,17 @@ struct LibraryView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
+                    #if !targetEnvironment(macCatalyst)
+                    PageTitle("Discothèque") {
+                        if session.isAdmin {
+                            NavigationLink { LibraryControlsView() } label: { HeaderIcon("slider.horizontal.3") }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Contrôles")
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, -12)
+                    #endif
                     VStack(spacing: 0) {
                         category("Playlists", "music.note.list") { PlaylistsView() }
                         category("Artistes", "music.microphone") { ArtistsView() }
@@ -35,13 +46,18 @@ struct LibraryView: View {
                 .padding(.vertical)
             }
             .pageBackground()
+            #if targetEnvironment(macCatalyst)
             .navigationTitle("Discothèque")
-            .platineDestinations()
             .toolbar {
                 if session.isAdmin {
                     NavigationLink { LibraryControlsView() } label: { Label("Contrôles", systemImage: "slider.horizontal.3") }
                 }
             }
+            #else
+            .underEmptyBar()
+            .titleAfterHeader("Discothèque", after: 60)
+            #endif
+            .platineDestinations(ownHeader: true)
             .task { recent = (try? await client.recentAlbums()) ?? [] }
             .refreshable { recent = (try? await client.recentAlbums()) ?? [] }
         }
