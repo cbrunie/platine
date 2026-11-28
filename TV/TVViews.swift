@@ -33,7 +33,8 @@ struct TVCard<Label: View>: View {
     @ViewBuilder var button: (AnyView) -> Label
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        // Assez d'écart pour la pochette soulevée au focus, qui couvrirait sinon son titre.
+        VStack(alignment: .leading, spacing: 30) {
             button(AnyView(Cover(path: cover, size: size, radius: 12)))
                 .buttonStyle(.card)
             VStack(alignment: .leading, spacing: 4) {
