@@ -5,8 +5,8 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/cbrunie/coulisse",
       "state": {
-        "revision": "5f09abe95e332303ec6c7c14b83c3e1cf56c5c23",
-        "version": "2.3.4"
+        "revision": "406a89f613894eb9d4e6f8ec75eb4330c3931604",
+        "version": "2.4.0"
       }
     }
   ],

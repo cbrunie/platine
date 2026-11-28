@@ -36,7 +36,7 @@ struct TVCard<Label: View>: View {
         // Assez d'écart pour la pochette soulevée au focus, qui couvrirait sinon son titre.
         VStack(alignment: .leading, spacing: 30) {
             button(AnyView(Cover(path: cover, size: size, radius: 12)))
-                .buttonStyle(.card)
+                .buttonStyle(FocusLiftStyle())
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.callout.weight(.semibold)).oneLine()
                 if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary).oneLine() }
