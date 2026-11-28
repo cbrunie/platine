@@ -160,6 +160,69 @@ struct FollowingView: View {
     @State private var showsCities = false
 
     var body: some View {
+        // iPad et Mac : une page large, rayon d'artistes et grille de pochettes ; l'iPhone garde sa liste.
+        Group { if Screen.isWide { wide } else { list } }
+        .pageBackground()
+        .navigationTitle("Suivis")
+        .navigationDestination(isPresented: $showsConcerts) { ConcertsView() }
+        .navigationDestination(isPresented: $showsCities) { CitiesView() }
+        .task {
+            async let artists = try? client.followedArtists()
+            await loadMore()
+            self.artists = await artists ?? []
+            // Ouvrir la page vaut lecture : la pastille « non vu » disparaît.
+            _ = try? await client.markReleasesSeen()
+        }
+    }
+
+    private var wide: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                HStack(spacing: 12) {
+                    Button { showsConcerts = true } label: { Label("Concerts", systemImage: "ticket") }
+                    Button { showsCities = true } label: { Label("Mes villes", systemImage: "mappin.and.ellipse") }
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+                .padding(.horizontal)
+
+                if let artists, !artists.isEmpty {
+                    Rail(artists.count > 1 ? "\(artists.count) artistes suivis" : "1 artiste suivi") {
+                        ForEach(artists) { artist in
+                            NavigationLink(value: ArtistRef(id: artist.mbid, name: artist.name)) {
+                                ArtistBubble(name: artist.name, image: artist.imageUrl ?? DroppedNeedle.artistImage(artist.mbid), size: 120)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Nouvelles sorties").font(.display(20, relativeTo: .title3))
+                    if releases.isEmpty, artists != nil {
+                        Text("Rien de neuf pour l'instant.").foregroundStyle(.secondary)
+                    }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 20) {
+                        ForEach(Array(releases.enumerated()), id: \.element.id) { index, release in
+                            NavigationLink(value: release.album) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    AlbumCard(album: release.album, playable: release.inLibrary == true)
+                                    if release.inLibrary == true { Pill(text: "Dans les bacs") }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .onAppear { if index == releases.count - 1 { Task { await loadMore() } } }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .padding(.vertical)
+        }
+        .scrollIndicators(.never)
+    }
+
+    private var list: some View {
         List {
             // Deux liens dans une même ligne de liste n'en font qu'un : de vrais boutons.
             HStack(spacing: 12) {
@@ -229,17 +292,6 @@ struct FollowingView: View {
             .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
-        .pageBackground()
-        .navigationTitle("Suivis")
-        .navigationDestination(isPresented: $showsConcerts) { ConcertsView() }
-        .navigationDestination(isPresented: $showsCities) { CitiesView() }
-        .task {
-            async let artists = try? client.followedArtists()
-            await loadMore()
-            self.artists = await artists ?? []
-            // Ouvrir la page vaut lecture : la pastille « non vu » disparaît.
-            _ = try? await client.markReleasesSeen()
-        }
     }
 
     private func loadMore() async {
