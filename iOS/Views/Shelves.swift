@@ -3,9 +3,22 @@ import SwiftUI
 extension View {
     /// Les pages qu'on peut ouvrir de partout : un album, un artiste, un mix.
     func platineDestinations() -> some View {
-        navigationDestination(for: LocalAlbum.self) { AlbumView(album: $0) }
+        compactTitle()
+            .navigationDestination(for: LocalAlbum.self) { AlbumView(album: $0) }
             .navigationDestination(for: ArtistRef.self) { ArtistView(artist: $0) }
-            .navigationDestination(for: Route.self) { $0.page }
+            .navigationDestination(for: Route.self) { $0.page.compactTitle(pushed: true) }
+    }
+
+    /// Le grand titre à gauche, sur la même ligne que les boutons de la barre : pas une ligne de
+    /// boutons puis une ligne de titre. Une page qui choisit son propre mode (un en-tête) le garde.
+    /// `pushed` : une page ouverte depuis une autre. iOS ne pose pas de grand titre à côté du bouton
+    /// retour : son titre va au centre de la ligne des boutons.
+    @ViewBuilder func compactTitle(pushed: Bool = false) -> some View {
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        toolbarTitleDisplayMode(pushed ? .inline : .inlineLarge)
+        #else
+        self
+        #endif
     }
 }
 
